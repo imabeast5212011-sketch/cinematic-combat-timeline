@@ -1,14 +1,13 @@
 import { MODULE_ID, MODULE_TITLE } from "./constants.js";
+import { loadTemplatesCompat, reportError } from "./foundry-compat.js";
 import { registerSettings } from "./settings.js";
-import { registerActorConfigHooks } from "./actor-config.js";
 import { TimelineController } from "./timeline-controller.js";
-import { CountdownConfigApplication } from "./countdown-config.js";
 import { getViewedCombat } from "./combat-adapter.js";
 
 let timelineController = null;
 
 async function preloadTemplates() {
-  return loadTemplates([
+  return loadTemplatesCompat([
     `modules/${MODULE_ID}/templates/timeline.hbs`,
     `modules/${MODULE_ID}/templates/countdown-config.hbs`,
     `modules/${MODULE_ID}/templates/actor-config.hbs`
@@ -17,8 +16,10 @@ async function preloadTemplates() {
 
 Hooks.once("init", () => {
   registerSettings(() => timelineController?.scheduleRender());
-  registerActorConfigHooks();
-  void preloadTemplates();
+  void import("./actor-config.js")
+    .then(({ registerActorConfigHooks }) => registerActorConfigHooks())
+    .catch((error) => reportError("Actor configuration controls were not registered.", error));
+  void preloadTemplates().catch((error) => reportError("Template preload failed.", error));
 });
 
 Hooks.once("ready", () => {
@@ -32,9 +33,14 @@ Hooks.once("ready", () => {
       get controller() {
         return timelineController;
       },
-      openCountdownConfig: () => {
+      openCountdownConfig: async () => {
         if (!game.user?.isGM) return;
-        new CountdownConfigApplication({ combat: getViewedCombat() }).render({ force: true });
+        try {
+          const { CountdownConfigApplication } = await import("./countdown-config.js");
+          new CountdownConfigApplication({ combat: getViewedCombat() }).render({ force: true });
+        } catch (error) {
+          reportError("Countdown configuration could not open.", error);
+        }
       },
       destroy: () => timelineController?.destroy()
     };

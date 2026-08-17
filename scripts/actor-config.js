@@ -1,4 +1,5 @@
 import { FLAGS, MODULE_ID, clampNumber, localize } from "./constants.js";
+import { getApplicationV2Api } from "./foundry-compat.js";
 import {
   getActorTimelineConfig,
   isSafeColor,
@@ -6,7 +7,7 @@ import {
   normalizeFoundryPath
 } from "./image-adapter.js";
 
-const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+const { ApplicationV2, HandlebarsApplicationMixin } = getApplicationV2Api();
 
 function formObject(formData) {
   return formData?.object ?? Object.fromEntries(new FormData(formData));

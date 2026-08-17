@@ -5,6 +5,7 @@ import {
   ZERO_BEHAVIORS,
   localize
 } from "./constants.js";
+import { getApplicationV2Api } from "./foundry-compat.js";
 import { getViewedCombat } from "./combat-adapter.js";
 import {
   createCountdown,
@@ -16,7 +17,7 @@ import {
   updateCountdown
 } from "./countdown-service.js";
 
-const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+const { ApplicationV2, HandlebarsApplicationMixin } = getApplicationV2Api();
 
 function formObject(formData) {
   return formData?.object ?? Object.fromEntries(new FormData(formData));

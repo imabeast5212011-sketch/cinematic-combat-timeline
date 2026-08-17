@@ -1,4 +1,5 @@
 import { ANCHORS, MODULE_ID, SELECTOR, SETTINGS, clampNumber, localize } from "./constants.js";
+import { renderTemplateCompat, reportError } from "./foundry-compat.js";
 import {
   getViewedCombat,
   openCombatantActor,
@@ -15,7 +16,6 @@ import {
   setCountdownTriggered
 } from "./countdown-service.js";
 import { processCountdownProgression } from "./countdown-authority.js";
-import { CountdownConfigApplication } from "./countdown-config.js";
 import { buildTimelineState } from "./timeline-state.js";
 
 const TEMPLATE_PATH = `modules/${MODULE_ID}/templates/timeline.hbs`;
@@ -32,6 +32,53 @@ function renderApplication(app) {
   } catch (_error) {
     app.render(true);
   }
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function fallbackEntryHtml(entry) {
+  if (entry.isDivider) return `<li class="${escapeHtml(entry.classes)}" role="separator"><span></span></li>`;
+  const dataAttributes = [
+    entry.combatantId ? `data-combatant-id="${escapeHtml(entry.combatantId)}"` : "",
+    entry.countdownId ? `data-countdown-id="${escapeHtml(entry.countdownId)}"` : ""
+  ].filter(Boolean).join(" ");
+  return `<li class="${escapeHtml(entry.classes)}" style="${escapeHtml(entry.style)}" ${dataAttributes} role="button" tabindex="0" title="${escapeHtml(entry.tooltip)}" aria-label="${escapeHtml(entry.ariaLabel)}">
+    <div class="cct-icon-frame">
+      <img class="cct-icon" src="${escapeHtml(entry.image)}" data-fallback="${escapeHtml(entry.fallbackImage)}" alt="">
+      ${entry.current ? '<span class="cct-now" aria-hidden="true">NOW</span>' : ""}
+      ${entry.isCountdown ? `<span class="cct-count" aria-hidden="true">${escapeHtml(entry.count)}</span>` : ""}
+      ${entry.showDefeated ? '<span class="cct-defeated-mark" aria-hidden="true">x</span>' : ""}
+      ${entry.showPreviewBadge ? '<span class="cct-preview-mark" aria-hidden="true">N</span>' : ""}
+    </div>
+  </li>`;
+}
+
+function fallbackTimelineHtml(state) {
+  if (state.collapsed) {
+    return `<button type="button" class="cct-collapsed-button" data-action="toggle-collapse" title="${escapeHtml(state.controls.collapse)}" aria-label="${escapeHtml(state.currentAria)}">
+      <img class="cct-collapsed-image" src="${escapeHtml(state.currentImage)}" data-fallback="${escapeHtml(state.currentFallbackImage)}" alt="">
+      ${state.roundLabel ? `<span class="cct-collapsed-round">${escapeHtml(state.roundLabel)}</span>` : ""}
+    </button>`;
+  }
+  return `<section class="cct-panel" aria-label="${escapeHtml(localize("CCT.TimelineAria"))}">
+    <header class="cct-toolbar">
+      <button type="button" class="cct-tool cct-drag-handle" data-action="drag" title="${escapeHtml(localize("CCT.DragTimeline"))}" aria-label="${escapeHtml(localize("CCT.DragTimeline"))}">::</button>
+      <span class="cct-round-label">${escapeHtml(state.roundLabel)}</span>
+      <button type="button" class="cct-tool" data-action="toggle-labels" title="${escapeHtml(state.controls.labels)}" aria-label="${escapeHtml(state.controls.labels)}">T</button>
+      <button type="button" class="cct-tool" data-action="cycle-anchor" title="${escapeHtml(state.controls.anchor)}" aria-label="${escapeHtml(state.controls.anchor)}">A</button>
+      <button type="button" class="cct-tool" data-action="scale-down" title="${escapeHtml(state.controls.scaleDown)}" aria-label="${escapeHtml(state.controls.scaleDown)}">-</button>
+      <button type="button" class="cct-tool" data-action="scale-up" title="${escapeHtml(state.controls.scaleUp)}" aria-label="${escapeHtml(state.controls.scaleUp)}">+</button>
+      ${state.canCreateCountdown ? `<button type="button" class="cct-tool" data-action="new-countdown" title="${escapeHtml(state.controls.addCountdown)}" aria-label="${escapeHtml(state.controls.addCountdown)}">C</button>` : ""}
+      <button type="button" class="cct-tool" data-action="toggle-collapse" title="${escapeHtml(state.controls.collapse)}" aria-label="${escapeHtml(state.controls.collapse)}">_</button>
+    </header>
+    ${state.hasCombat ? `<ol class="cct-entry-list">${state.entries.map(fallbackEntryHtml).join("")}</ol>` : `<div class="cct-no-combat">${escapeHtml(state.noCombatLabel)}</div>`}
+  </section>`;
 }
 
 function clampPosition(position, element) {
@@ -127,9 +174,18 @@ export class TimelineController {
 
   async render() {
     if (!this.root) return;
-    const combat = getViewedCombat();
-    this.lastCombat = combat;
-    const state = buildTimelineState(combat);
+    let combat = null;
+    let state = null;
+    try {
+      combat = getViewedCombat();
+      this.lastCombat = combat;
+      state = buildTimelineState(combat);
+    } catch (error) {
+      reportError("Timeline state failed.", error);
+      this.root.hidden = false;
+      this.root.innerHTML = `<button type="button" class="cct-collapsed-button" title="Cinematic Combat Timeline">CCT</button>`;
+      return;
+    }
     if (!state.enabled) {
       this.root.hidden = true;
       return;
@@ -140,7 +196,12 @@ export class TimelineController {
     this.root.dataset.reduceAnimation = String(state.reduceAnimation);
     this.root.dataset.anchor = state.anchor;
     this.root.style.setProperty("--cct-scale", String(state.scale));
-    this.root.innerHTML = await renderTemplate(TEMPLATE_PATH, state);
+    try {
+      this.root.innerHTML = await renderTemplateCompat(TEMPLATE_PATH, state);
+    } catch (error) {
+      reportError("Timeline template render failed; using fallback renderer.", error);
+      this.root.innerHTML = fallbackTimelineHtml(state);
+    }
     this.bindDragHandle();
     this.applyPlacement();
   }
@@ -202,7 +263,7 @@ export class TimelineController {
 
     const countdown = event.target.closest("[data-countdown-id]");
     if (countdown && game.user?.isGM) {
-      this.openCountdownConfig(countdown.dataset.countdownId);
+      void this.openCountdownConfig(countdown.dataset.countdownId);
     }
   }
 
@@ -227,7 +288,7 @@ export class TimelineController {
     const countdown = event.target.closest("[data-countdown-id]");
     if (!countdown || !game.user?.isGM) return;
     event.preventDefault();
-    this.openCountdownConfig(countdown.dataset.countdownId);
+    void this.openCountdownConfig(countdown.dataset.countdownId);
   }
 
   onImageError(event) {
@@ -259,7 +320,7 @@ export class TimelineController {
         await this.changeScale(0.05);
         break;
       case "new-countdown":
-        if (game.user?.isGM) this.openCountdownConfig();
+        if (game.user?.isGM) void this.openCountdownConfig();
         break;
       case "drag":
         break;
@@ -308,13 +369,18 @@ export class TimelineController {
       ?? null;
   }
 
-  openCountdownConfig(countdownId = null) {
+  async openCountdownConfig(countdownId = null) {
     const combat = getViewedCombat();
     if (!combat || !game.user?.isGM) return;
     const countdown = countdownId
       ? getCountdowns(combat).find((entry) => entry.id === countdownId)
       : null;
-    renderApplication(new CountdownConfigApplication({ combat, countdown }));
+    try {
+      const { CountdownConfigApplication } = await import("./countdown-config.js");
+      renderApplication(new CountdownConfigApplication({ combat, countdown }));
+    } catch (error) {
+      reportError("Countdown configuration could not open.", error);
+    }
   }
 
   onPointerDown(event) {
