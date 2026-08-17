@@ -5,7 +5,7 @@
   --cct-current-icon: calc(52px * var(--cct-scale));
   --cct-gap: calc(3px * var(--cct-scale));
   position: fixed;
-  z-index: 70;
+  z-index: 10000;
   width: var(--cct-width);
   color: #f4f1e8;
   font-family: var(--font-primary, "Signika", sans-serif);
@@ -19,13 +19,13 @@
 
 #cinematic-combat-timeline-root.cct-anchor-middle-right {
   top: 50%;
-  right: 320px;
+  right: 18px;
   transform: translateY(-50%);
 }
 
 #cinematic-combat-timeline-root.cct-anchor-upper-right {
   top: 76px;
-  right: 320px;
+  right: 18px;
 }
 
 #cinematic-combat-timeline-root.cct-anchor-middle-left {

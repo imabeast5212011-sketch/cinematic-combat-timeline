@@ -1,5 +1,5 @@
 import { ANCHORS, MODULE_ID, SELECTOR, SETTINGS, clampNumber, localize } from "./constants.js";
-import { renderTemplateCompat, reportError, reportWarning } from "./foundry-compat.js";
+import { reportError } from "./foundry-compat.js";
 import {
   getViewedCombat,
   openCombatantActor,
@@ -233,22 +233,7 @@ export class TimelineController {
     this.root.dataset.hasCombat = String(state.hasCombat);
     this.root.dataset.started = String(state.started);
     this.root.style.setProperty("--cct-scale", String(state.scale));
-    try {
-      const html = await renderTemplateCompat(TEMPLATE_PATH, state);
-      if (typeof html === "string" && html.trim().length > 0) {
-        this.root.innerHTML = html;
-      } else {
-        reportWarning("Timeline template rendered empty; using fallback renderer.", {
-          hasCombat: state.hasCombat,
-          entries: state.entries?.length ?? 0,
-          collapsed: state.collapsed
-        });
-        this.root.innerHTML = fallbackTimelineHtml(state);
-      }
-    } catch (error) {
-      reportError("Timeline template render failed; using fallback renderer.", error);
-      this.root.innerHTML = fallbackTimelineHtml(state);
-    }
+    this.root.innerHTML = fallbackTimelineHtml(state);
     this.bindDragHandle();
     this.applyPlacement();
   }
