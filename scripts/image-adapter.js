@@ -13,7 +13,6 @@ export function normalizeColor(value, fallback = "#d6b35a") {
 }
 
 export function isSafeFoundryPath(value) {
-  if (!value) return true;
   if (typeof value !== "string") return false;
   const trimmed = value.trim();
   if (!trimmed || trimmed.length > 240) return false;
@@ -21,7 +20,9 @@ export function isSafeFoundryPath(value) {
 }
 
 export function normalizeFoundryPath(value) {
-  return isSafeFoundryPath(value) ? value.trim() : "";
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  return isSafeFoundryPath(trimmed) ? trimmed : "";
 }
 
 export function getActorTimelineConfig(actor) {
