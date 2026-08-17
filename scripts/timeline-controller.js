@@ -25,14 +25,55 @@ const ANCHOR_ORDER = [
   ANCHORS.MIDDLE_LEFT,
   ANCHORS.UPPER_LEFT
 ];
+const DEBUG_VERSION_LABEL = "CCT 0.1.7";
 
-function bootBadgeHtml(label = "CCT") {
-  return `<button type="button"
-    class="cct-collapsed-button cct-boot-badge"
-    data-action="toggle-collapse"
-    style="display:grid;place-items:center;width:48px;height:48px;border:2px solid #ff3b3b;border-radius:999px;background:#111;color:#ffd8d8;font-weight:800;font-size:12px;box-shadow:0 0 0 2px rgba(0,0,0,.55),0 0 18px rgba(255,59,59,.55);"
-    title="Cinematic Combat Timeline"
-    aria-label="Cinematic Combat Timeline">${escapeHtml(label)}</button>`;
+function debugBadgeHtml(label = DEBUG_VERSION_LABEL) {
+  return `<div
+    class="cct-debug-badge"
+    data-cct-debug-badge
+    style="display:grid;place-items:center;width:60px;min-height:24px;margin:0 auto 4px;border:2px solid #ff3b3b;border-radius:7px;background:#111;color:#ffd8d8;font-weight:800;font-size:10px;line-height:1.1;text-align:center;box-shadow:0 0 0 2px rgba(0,0,0,.55),0 0 18px rgba(255,59,59,.45);pointer-events:none;"
+    title="Cinematic Combat Timeline ${escapeHtml(label)}"
+    aria-label="Cinematic Combat Timeline ${escapeHtml(label)}">${escapeHtml(label)}</div>`;
+}
+
+function diagnosticPillHtml(label) {
+  return `<div
+    class="cct-render-diagnostic"
+    style="display:grid;place-items:center;width:60px;min-height:24px;margin:0 auto;border:1px solid rgba(255,216,216,.7);border-radius:6px;background:rgba(17,17,17,.9);color:#ffd8d8;font-weight:800;font-size:10px;text-align:center;"
+    aria-hidden="true">${escapeHtml(label)}</div>`;
+}
+
+function ensureRenderShell(root, label = DEBUG_VERSION_LABEL) {
+  if (!root) return null;
+  let badge = root.querySelector("[data-cct-debug-badge]");
+  if (!badge) {
+    root.insertAdjacentHTML("afterbegin", debugBadgeHtml(label));
+  }
+  badge = root.querySelector("[data-cct-debug-badge]");
+  if (badge) {
+    badge.textContent = label;
+    badge.title = `Cinematic Combat Timeline ${label}`;
+    badge.setAttribute("aria-label", `Cinematic Combat Timeline ${label}`);
+  }
+
+  let slot = root.querySelector("[data-cct-render-slot]");
+  if (!slot) {
+    slot = document.createElement("div");
+    slot.className = "cct-render-slot";
+    slot.dataset.cctRenderSlot = "";
+    Object.assign(slot.style, {
+      display: "grid",
+      placeItems: "start center",
+      minWidth: "60px"
+    });
+    root.appendChild(slot);
+  }
+  return slot;
+}
+
+function setRenderSlot(root, html, label = DEBUG_VERSION_LABEL) {
+  const slot = ensureRenderShell(root, label);
+  if (slot) slot.innerHTML = html;
 }
 
 function renderApplication(app) {
@@ -119,12 +160,13 @@ export class TimelineController {
   start() {
     if (this.started) return;
     this.started = true;
-    document.getElementById(SELECTOR.ROOT_ID)?.remove();
-    this.root = document.createElement("aside");
+    this.root = document.getElementById(SELECTOR.ROOT_ID) ?? document.createElement("aside");
     this.root.id = SELECTOR.ROOT_ID;
     this.root.className = `${MODULE_ID} cct-root`;
     this.root.setAttribute("aria-live", "polite");
     this.root.dataset.status = "mounted";
+    this.root.style.removeProperty("width");
+    this.root.style.removeProperty("min-height");
     Object.assign(this.root.style, {
       position: "fixed",
       top: "140px",
@@ -133,13 +175,14 @@ export class TimelineController {
       display: "block",
       pointerEvents: "auto"
     });
-    this.root.innerHTML = bootBadgeHtml("CCT");
+    this.root.innerHTML = "";
+    ensureRenderShell(this.root);
     this.root.addEventListener("click", (event) => this.onClick(event));
     this.root.addEventListener("dblclick", (event) => this.onDoubleClick(event));
     this.root.addEventListener("keydown", (event) => this.onKeyDown(event));
     this.root.addEventListener("contextmenu", (event) => this.onContextMenu(event));
     this.root.addEventListener("error", (event) => this.onImageError(event), true);
-    document.body.appendChild(this.root);
+    if (!this.root.isConnected) document.body.appendChild(this.root);
     this.registerHooks();
     window.addEventListener("resize", this.boundResize);
     void this.safeRender("initial");
@@ -216,7 +259,7 @@ export class TimelineController {
       if (this.root) {
         this.root.hidden = false;
         this.root.dataset.status = "render-error";
-        this.root.innerHTML = `<button type="button" class="cct-collapsed-button" title="Cinematic Combat Timeline">CCT</button>`;
+        setRenderSlot(this.root, diagnosticPillHtml("ERR"), "CCT ERR");
         this.applyPlacement();
       }
     } finally {
@@ -235,13 +278,13 @@ export class TimelineController {
     } catch (error) {
       reportError("Timeline state failed.", error);
       this.root.hidden = false;
-      this.root.innerHTML = `<button type="button" class="cct-collapsed-button" title="Cinematic Combat Timeline">CCT</button>`;
+      setRenderSlot(this.root, diagnosticPillHtml("STATE"), "CCT ERR");
       return;
     }
     if (!state.enabled) {
       this.root.hidden = false;
       this.root.dataset.status = "disabled-setting";
-      this.root.innerHTML = bootBadgeHtml("OFF");
+      setRenderSlot(this.root, diagnosticPillHtml("OFF"), "CCT OFF");
       this.applyPlacement();
       return;
     }
@@ -254,7 +297,7 @@ export class TimelineController {
     this.root.dataset.hasCombat = String(state.hasCombat);
     this.root.dataset.started = String(state.started);
     this.root.style.setProperty("--cct-scale", String(state.scale));
-    this.root.innerHTML = fallbackTimelineHtml(state);
+    setRenderSlot(this.root, fallbackTimelineHtml(state));
     this.bindDragHandle();
     this.applyPlacement();
   }

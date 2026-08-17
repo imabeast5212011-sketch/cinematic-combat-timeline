@@ -1,8 +1,8 @@
-import { MODULE_ID, MODULE_TITLE } from "./constants.js";
-import { loadTemplatesCompat, reportError } from "./foundry-compat.js";
-import { registerSettings } from "./settings.js";
-import { TimelineController } from "./timeline-controller.js";
-import { getViewedCombat } from "./combat-adapter.js";
+import { MODULE_ID, MODULE_TITLE } from "./constants.js?v=0.1.7";
+import { loadTemplatesCompat, reportError } from "./foundry-compat.js?v=0.1.7";
+import { registerSettings } from "./settings.js?v=0.1.7";
+import { TimelineController } from "./timeline-controller.js?v=0.1.7";
+import { getViewedCombat } from "./combat-adapter.js?v=0.1.7";
 
 let timelineController = null;
 
@@ -16,7 +16,7 @@ async function preloadTemplates() {
 
 Hooks.once("init", () => {
   registerSettings(() => timelineController?.scheduleRender());
-  void import("./actor-config.js")
+  void import("./actor-config.js?v=0.1.7")
     .then(({ registerActorConfigHooks }) => registerActorConfigHooks())
     .catch((error) => reportError("Actor configuration controls were not registered.", error));
   void preloadTemplates().catch((error) => reportError("Template preload failed.", error));
@@ -35,7 +35,7 @@ Hooks.once("ready", () => {
       openCountdownConfig: async () => {
         if (!game.user?.isGM) return;
         try {
-          const { CountdownConfigApplication } = await import("./countdown-config.js");
+          const { CountdownConfigApplication } = await import("./countdown-config.js?v=0.1.7");
           new CountdownConfigApplication({ combat: getViewedCombat() }).render({ force: true });
         } catch (error) {
           reportError("Countdown configuration could not open.", error);
@@ -45,7 +45,7 @@ Hooks.once("ready", () => {
     };
   }
 
-  console.info(`${MODULE_TITLE} | Ready`);
+  console.info(`${MODULE_TITLE} | Ready 0.1.7`);
 });
 
 Hooks.once("hotReload", () => {
