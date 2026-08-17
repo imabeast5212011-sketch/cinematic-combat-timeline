@@ -3,7 +3,7 @@ import {
   MODULE_ID,
   ZERO_BEHAVIORS,
   localize
-} from "./constants.js?v=0.1.10";
+} from "./constants.js?v=0.1.11";
 import {
   getCombatTurns,
   getCurrentTurnIndex,
@@ -15,10 +15,10 @@ import {
   isAnonymousCombatant,
   isStarted,
   shouldShowCombatant
-} from "./combat-adapter.js?v=0.1.10";
-import { buildImageStyle, getActorTimelineConfig, getCombatantImageData, normalizeColor } from "./image-adapter.js?v=0.1.10";
-import { buildRoundSequence, getCountdowns, isCountdownRenderedInTimeline } from "./countdown-service.js?v=0.1.10";
-import { getTimelineSettings } from "./settings.js?v=0.1.10";
+} from "./combat-adapter.js?v=0.1.11";
+import { buildImageStyle, getActorTimelineConfig, getCombatantImageData, normalizeColor } from "./image-adapter.js?v=0.1.11";
+import { buildRoundSequence, getCountdowns, isCountdownRenderedInTimeline } from "./countdown-service.js?v=0.1.11";
+import { getTimelineSettings } from "./settings.js?v=0.1.11";
 
 function initiativeLabel(value) {
   const number = Number(value);
@@ -215,6 +215,7 @@ export function buildTimelineState(combat) {
     expandedLabels: settings.expandedLabels,
     reduceAnimation: settings.reduceAnimation,
     canCreateCountdown: Boolean(game.user?.isGM && combat && settings.enableCountdowns),
+    canControlCombat: Boolean(game.user?.isGM && combat),
     anchor: settings.anchor,
     scale: settings.scale,
     roundLabel: combat ? localize("CCT.RoundLabel", { round: round || 0 }) : "",
@@ -229,7 +230,10 @@ export function buildTimelineState(combat) {
       anchor: localize("CCT.CycleAnchor"),
       scaleDown: localize("CCT.ScaleDown"),
       scaleUp: localize("CCT.ScaleUp"),
-      addCountdown: localize("CCT.AddCountdown")
+      addCountdown: localize("CCT.AddCountdown"),
+      previousTurn: localize("CCT.PreviousTurn"),
+      nextTurn: localize("CCT.NextTurn"),
+      endCombat: localize("CCT.EndCombat")
     }
   };
 }

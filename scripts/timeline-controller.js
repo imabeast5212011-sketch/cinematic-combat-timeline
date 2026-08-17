@@ -1,22 +1,25 @@
-import { ANCHORS, MODULE_ID, SELECTOR, SETTINGS, clampNumber, localize } from "./constants.js?v=0.1.10";
-import { reportError } from "./foundry-compat.js?v=0.1.10";
+import { ANCHORS, MODULE_ID, SELECTOR, SETTINGS, TIE_PLACEMENTS, ZERO_BEHAVIORS, clampNumber, localize } from "./constants.js?v=0.1.11";
+import { reportError } from "./foundry-compat.js?v=0.1.11";
 import {
+  getCombatTurns,
+  getCurrentTurnIndex,
   getViewedCombat,
   openCombatantActor,
   panToCombatantToken,
   selectCombatantToken
-} from "./combat-adapter.js?v=0.1.10";
-import { getTimelineSettings, setClientSetting } from "./settings.js?v=0.1.10";
+} from "./combat-adapter.js?v=0.1.11";
+import { getTimelineSettings, setClientSetting } from "./settings.js?v=0.1.11";
 import {
   adjustCountdown,
+  createCountdown,
   deleteCountdown,
   getCountdowns,
   resetCountdown,
   setCountdownActive,
   setCountdownTriggered
-} from "./countdown-service.js?v=0.1.10";
-import { processCountdownProgression } from "./countdown-authority.js?v=0.1.10";
-import { buildTimelineState } from "./timeline-state.js?v=0.1.10";
+} from "./countdown-service.js?v=0.1.11";
+import { processCountdownProgression } from "./countdown-authority.js?v=0.1.11";
+import { buildTimelineState } from "./timeline-state.js?v=0.1.11";
 
 const TEMPLATE_PATH = `modules/${MODULE_ID}/templates/timeline.hbs`;
 const ANCHOR_ORDER = [
@@ -25,7 +28,7 @@ const ANCHOR_ORDER = [
   ANCHORS.MIDDLE_LEFT,
   ANCHORS.UPPER_LEFT
 ];
-const DEBUG_VERSION_LABEL = "CCT 0.1.10";
+const DEBUG_VERSION_LABEL = "CCT 0.1.11";
 
 function errorText(error, maxLength = 90) {
   const text = error?.message || error?.stack || String(error ?? "Unknown error");
@@ -147,11 +150,12 @@ function applyDefaultPlacement(root) {
   });
 }
 
-function renderApplication(app) {
+async function renderApplication(app) {
   try {
-    app.render({ force: true });
-  } catch (_error) {
-    app.render(true);
+    await app.render({ force: true });
+  } catch (error) {
+    reportError("ApplicationV2 render failed; trying legacy render.", error);
+    await app.render(true);
   }
 }
 
@@ -180,6 +184,15 @@ function fallbackEntryHtml(entry) {
   </li>`;
 }
 
+function combatControlsHtml(state) {
+  if (!state.canControlCombat) return "";
+  return `<footer class="cct-combat-controls" aria-label="${escapeHtml(localize("CCT.CombatControls"))}">
+    <button type="button" class="cct-combat-control" data-action="previous-turn" title="${escapeHtml(state.controls.previousTurn)}" aria-label="${escapeHtml(state.controls.previousTurn)}">&lt;</button>
+    <button type="button" class="cct-combat-control" data-action="next-turn" title="${escapeHtml(state.controls.nextTurn)}" aria-label="${escapeHtml(state.controls.nextTurn)}">&gt;</button>
+    <button type="button" class="cct-combat-control cct-combat-end" data-action="end-combat" title="${escapeHtml(state.controls.endCombat)}" aria-label="${escapeHtml(state.controls.endCombat)}">X</button>
+  </footer>`;
+}
+
 function fallbackTimelineHtml(state) {
   if (state.collapsed) {
     return `<button type="button" class="cct-collapsed-button" data-action="toggle-collapse" title="${escapeHtml(state.controls.collapse)}" aria-label="${escapeHtml(state.currentAria)}">
@@ -199,6 +212,7 @@ function fallbackTimelineHtml(state) {
       <button type="button" class="cct-tool" data-action="toggle-collapse" title="${escapeHtml(state.controls.collapse)}" aria-label="${escapeHtml(state.controls.collapse)}">_</button>
     </header>
     ${state.hasCombat ? `<ol class="cct-entry-list">${state.entries.map(fallbackEntryHtml).join("")}</ol>` : `<div class="cct-no-combat">${escapeHtml(state.noCombatLabel)}</div>`}
+    ${combatControlsHtml(state)}
   </section>`;
 }
 
@@ -506,7 +520,16 @@ export class TimelineController {
         await this.changeScale(0.05);
         break;
       case "new-countdown":
-        if (game.user?.isGM) void this.openCountdownConfig();
+        await this.createDefaultCountdown();
+        break;
+      case "previous-turn":
+        await this.previousTurn();
+        break;
+      case "next-turn":
+        await this.nextTurn();
+        break;
+      case "end-combat":
+        await this.endCombat();
         break;
       case "drag":
         break;
@@ -548,6 +571,69 @@ export class TimelineController {
     await operation(combat, id);
   }
 
+  currentCombatantInitiative(combat) {
+    const turns = getCombatTurns(combat);
+    const currentTurnIndex = getCurrentTurnIndex(combat, turns);
+    const current = Number.isInteger(currentTurnIndex)
+      ? turns[currentTurnIndex]
+      : combat?.combatant;
+    const initiative = Number(current?.initiative);
+    if (Number.isFinite(initiative)) return initiative;
+
+    const firstInitiative = turns
+      .map((combatant) => Number(combatant?.initiative))
+      .find((value) => Number.isFinite(value));
+    return firstInitiative ?? 0;
+  }
+
+  async createDefaultCountdown() {
+    if (!game.user?.isGM) return ui.notifications?.warn(localize("CCT.Errors.gmOnly"));
+    const combat = getViewedCombat();
+    if (!combat) return ui.notifications?.warn(localize("CCT.Errors.noCombat"));
+
+    await createCountdown(combat, {
+      name: localize("CCT.Countdown.defaultName"),
+      shortLabel: "T",
+      startingCount: 3,
+      currentCount: 3,
+      initiative: this.currentCombatantInitiative(combat),
+      tiePlacement: TIE_PLACEMENTS.AFTER,
+      icon: "",
+      accentColor: "#6fc6d6",
+      zeroBehavior: ZERO_BEHAVIORS.REMAIN,
+      active: true,
+      triggered: false
+    });
+    ui.notifications?.info?.(localize("CCT.Countdown.created"));
+    this.scheduleRender();
+  }
+
+  async previousTurn() {
+    if (!game.user?.isGM) return ui.notifications?.warn(localize("CCT.Errors.gmOnly"));
+    const combat = getViewedCombat();
+    if (!combat) return ui.notifications?.warn(localize("CCT.Errors.noCombat"));
+    if (typeof combat.previousTurn === "function") await combat.previousTurn();
+    this.scheduleRender();
+  }
+
+  async nextTurn() {
+    if (!game.user?.isGM) return ui.notifications?.warn(localize("CCT.Errors.gmOnly"));
+    const combat = getViewedCombat();
+    if (!combat) return ui.notifications?.warn(localize("CCT.Errors.noCombat"));
+    if (!combat.started && typeof combat.startCombat === "function") await combat.startCombat();
+    else if (typeof combat.nextTurn === "function") await combat.nextTurn();
+    this.scheduleRender();
+  }
+
+  async endCombat() {
+    if (!game.user?.isGM) return ui.notifications?.warn(localize("CCT.Errors.gmOnly"));
+    const combat = getViewedCombat();
+    if (!combat) return ui.notifications?.warn(localize("CCT.Errors.noCombat"));
+    if (typeof combat.endCombat === "function") await combat.endCombat();
+    else if (typeof combat.delete === "function") await combat.delete();
+    this.scheduleRender();
+  }
+
   findCombatant(combatantId) {
     if (!combatantId || !this.lastCombat) return null;
     return this.lastCombat.combatants?.get?.(combatantId)
@@ -562,8 +648,8 @@ export class TimelineController {
       ? getCountdowns(combat).find((entry) => entry.id === countdownId)
       : null;
     try {
-      const { CountdownConfigApplication } = await import("./countdown-config.js?v=0.1.10");
-      renderApplication(new CountdownConfigApplication({ combat, countdown }));
+      const { CountdownConfigApplication } = await import("./countdown-config.js?v=0.1.11");
+      await renderApplication(new CountdownConfigApplication({ combat, countdown }));
     } catch (error) {
       reportError("Countdown configuration could not open.", error);
     }
