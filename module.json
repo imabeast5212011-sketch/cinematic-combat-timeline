@@ -35,5 +35,8 @@
     }
   ],
   "media": [],
-  "readme": "README.md"
+  "readme": "README.md",
+  "url": "https://github.com/imabeast5212011-sketch/cinematic-combat-timeline",
+  "manifest": "https://raw.githubusercontent.com/imabeast5212011-sketch/cinematic-combat-timeline/main/module.json",
+  "download": "https://github.com/imabeast5212011-sketch/cinematic-combat-timeline/releases/download/v0.1.0/cinematic-combat-timeline-0.1.0.zip"
 }
