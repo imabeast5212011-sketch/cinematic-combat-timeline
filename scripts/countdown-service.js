@@ -7,9 +7,9 @@ import {
   ZERO_BEHAVIORS,
   clampNumber,
   cloneData
-} from "./constants.js?v=0.1.12";
-import { getTimelineSettings } from "./settings.js?v=0.1.12";
-import { normalizeColor, normalizeFoundryPath } from "./image-adapter.js?v=0.1.12";
+} from "./constants.js?v=0.1.13";
+import { getTimelineSettings } from "./settings.js?v=0.1.13";
+import { normalizeColor, normalizeFoundryPath } from "./image-adapter.js?v=0.1.13";
 
 const MAX_PROCESSED_ROUNDS = 250;
 

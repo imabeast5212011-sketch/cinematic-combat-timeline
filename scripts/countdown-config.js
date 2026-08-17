@@ -4,9 +4,9 @@ import {
   TIE_PLACEMENTS,
   ZERO_BEHAVIORS,
   localize
-} from "./constants.js?v=0.1.12";
-import { getApplicationV2Api } from "./foundry-compat.js?v=0.1.12";
-import { getViewedCombat } from "./combat-adapter.js?v=0.1.12";
+} from "./constants.js?v=0.1.13";
+import { getApplicationV2Api } from "./foundry-compat.js?v=0.1.13";
+import { getViewedCombat } from "./combat-adapter.js?v=0.1.13";
 import {
   createCountdown,
   deleteCountdown,
@@ -15,7 +15,7 @@ import {
   setCountdownActive,
   setCountdownTriggered,
   updateCountdown
-} from "./countdown-service.js?v=0.1.12";
+} from "./countdown-service.js?v=0.1.13";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = getApplicationV2Api();
 

@@ -1,11 +1,11 @@
-import { FLAGS, MODULE_ID, clampNumber, localize } from "./constants.js?v=0.1.12";
-import { getApplicationV2Api } from "./foundry-compat.js?v=0.1.12";
+import { FLAGS, MODULE_ID, clampNumber, localize } from "./constants.js?v=0.1.13";
+import { getApplicationV2Api } from "./foundry-compat.js?v=0.1.13";
 import {
   getActorTimelineConfig,
   isSafeColor,
   normalizeColor,
   normalizeFoundryPath
-} from "./image-adapter.js?v=0.1.12";
+} from "./image-adapter.js?v=0.1.13";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = getApplicationV2Api();
 

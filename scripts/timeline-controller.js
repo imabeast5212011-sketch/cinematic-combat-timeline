@@ -1,5 +1,5 @@
-import { ANCHORS, MODULE_ID, SELECTOR, SETTINGS, TIE_PLACEMENTS, ZERO_BEHAVIORS, clampNumber, localize } from "./constants.js?v=0.1.12";
-import { reportError } from "./foundry-compat.js?v=0.1.12";
+import { ANCHORS, MODULE_ID, SELECTOR, SETTINGS, TIE_PLACEMENTS, ZERO_BEHAVIORS, clampNumber, localize } from "./constants.js?v=0.1.13";
+import { reportError } from "./foundry-compat.js?v=0.1.13";
 import {
   getCombatTurns,
   getCurrentTurnIndex,
@@ -7,8 +7,8 @@ import {
   openCombatantActor,
   panToCombatantToken,
   selectCombatantToken
-} from "./combat-adapter.js?v=0.1.12";
-import { getTimelineSettings, setClientSetting } from "./settings.js?v=0.1.12";
+} from "./combat-adapter.js?v=0.1.13";
+import { getTimelineSettings, setClientSetting } from "./settings.js?v=0.1.13";
 import {
   adjustCountdown,
   createCountdown,
@@ -16,10 +16,11 @@ import {
   getCountdowns,
   resetCountdown,
   setCountdownActive,
-  setCountdownTriggered
-} from "./countdown-service.js?v=0.1.12";
-import { processCountdownProgression } from "./countdown-authority.js?v=0.1.12";
-import { buildTimelineState } from "./timeline-state.js?v=0.1.12";
+  setCountdownTriggered,
+  updateCountdown
+} from "./countdown-service.js?v=0.1.13";
+import { processCountdownProgression } from "./countdown-authority.js?v=0.1.13";
+import { buildTimelineState } from "./timeline-state.js?v=0.1.13";
 
 const TEMPLATE_PATH = `modules/${MODULE_ID}/templates/timeline.hbs`;
 const ANCHOR_ORDER = [
@@ -28,7 +29,7 @@ const ANCHOR_ORDER = [
   ANCHORS.MIDDLE_LEFT,
   ANCHORS.UPPER_LEFT
 ];
-const DEBUG_VERSION_LABEL = "CCT 0.1.12";
+const DEBUG_VERSION_LABEL = "CCT 0.1.13";
 
 function errorText(error, maxLength = 90) {
   const text = error?.message || error?.stack || String(error ?? "Unknown error");
@@ -102,14 +103,34 @@ function minimalEntryHtml(entry) {
   }
   const marker = entry.current ? "NOW" : (entry.isCountdown ? escapeHtml(entry.count) : "");
   const label = entry.label || entry.initiative || "";
-  const removeButton = entry.canRemoveCombatant && entry.combatantId
+  const rollButton = entry.canRollInitiative && entry.combatantId
     ? `<button
       type="button"
-      class="cct-remove-combatant"
+      class="cct-entry-action cct-roll-initiative"
+      data-action="roll-initiative"
+      data-combatant-id="${escapeHtml(entry.combatantId)}"
+      title="${escapeHtml(localize("CCT.RollInitiative"))}"
+      aria-label="${escapeHtml(localize("CCT.RollInitiative"))}"
+      style="position:absolute;left:-7px;top:-4px;display:grid;place-items:center;width:14px;height:14px;padding:0;border:1px solid rgba(155,216,255,.86);border-radius:999px;background:#07131a;color:#d8f1ff;font-size:9px;font-weight:800;line-height:1;z-index:2;">D</button>`
+    : "";
+  const removeCombatantButton = entry.canRemoveCombatant && entry.combatantId
+    ? `<button
+      type="button"
+      class="cct-entry-action cct-remove-combatant"
       data-action="remove-combatant"
       data-combatant-id="${escapeHtml(entry.combatantId)}"
       title="${escapeHtml(localize("CCT.RemoveCombatant"))}"
       aria-label="${escapeHtml(localize("CCT.RemoveCombatant"))}"
+      style="position:absolute;right:-7px;top:-4px;display:grid;place-items:center;width:14px;height:14px;padding:0;border:1px solid rgba(255,176,168,.86);border-radius:999px;background:#1a0808;color:#ffb0a8;font-size:9px;font-weight:800;line-height:1;z-index:2;">X</button>`
+    : "";
+  const removeCountdownButton = entry.canDeleteCountdown && entry.countdownId
+    ? `<button
+      type="button"
+      class="cct-entry-action cct-remove-countdown"
+      data-action="countdown-delete"
+      data-countdown-id="${escapeHtml(entry.countdownId)}"
+      title="${escapeHtml(localize("CCT.Countdown.delete"))}"
+      aria-label="${escapeHtml(localize("CCT.Countdown.delete"))}"
       style="position:absolute;right:-7px;top:-4px;display:grid;place-items:center;width:14px;height:14px;padding:0;border:1px solid rgba(255,176,168,.86);border-radius:999px;background:#1a0808;color:#ffb0a8;font-size:9px;font-weight:800;line-height:1;z-index:2;">X</button>`
     : "";
   return `<li
@@ -125,7 +146,9 @@ function minimalEntryHtml(entry) {
       data-fallback="${escapeHtml(entry.fallbackImage)}"
       alt=""
       style="width:38px;height:38px;border:2px solid #d6b35a;border-radius:${entry.isCountdown ? "999px" : "6px"};object-fit:cover;background:#111;">
-    ${removeButton}
+    ${rollButton}
+    ${removeCombatantButton}
+    ${removeCountdownButton}
     ${marker ? `<span style="position:absolute;right:-2px;bottom:-1px;min-width:16px;padding:1px 3px;border-radius:999px;background:#111;color:#ffe58f;font-size:8px;font-weight:800;text-align:center;">${escapeHtml(marker)}</span>` : ""}
     ${label ? `<span style="margin-top:2px;max-width:62px;overflow:hidden;color:#f4f1e8;font-size:9px;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(label)}</span>` : ""}
   </li>`;
@@ -187,12 +210,14 @@ function fallbackEntryHtml(entry) {
   return `<li class="${escapeHtml(entry.classes)}" style="${escapeHtml(entry.style)}" ${dataAttributes} role="button" tabindex="0" title="${escapeHtml(entry.tooltip)}" aria-label="${escapeHtml(entry.ariaLabel)}">
     <div class="cct-icon-frame">
       <img class="cct-icon" src="${escapeHtml(entry.image)}" data-fallback="${escapeHtml(entry.fallbackImage)}" alt="">
-      ${entry.canRemoveCombatant ? `<button type="button" class="cct-remove-combatant" data-action="remove-combatant" data-combatant-id="${escapeHtml(entry.combatantId)}" title="${escapeHtml(localize("CCT.RemoveCombatant"))}" aria-label="${escapeHtml(localize("CCT.RemoveCombatant"))}">X</button>` : ""}
       ${entry.current ? '<span class="cct-now" aria-hidden="true">NOW</span>' : ""}
       ${entry.isCountdown ? `<span class="cct-count" aria-hidden="true">${escapeHtml(entry.count)}</span>` : ""}
       ${entry.showDefeated ? '<span class="cct-defeated-mark" aria-hidden="true">x</span>' : ""}
       ${entry.showPreviewBadge ? '<span class="cct-preview-mark" aria-hidden="true">N</span>' : ""}
     </div>
+    ${entry.canRollInitiative ? `<button type="button" class="cct-entry-action cct-roll-initiative" data-action="roll-initiative" data-combatant-id="${escapeHtml(entry.combatantId)}" title="${escapeHtml(localize("CCT.RollInitiative"))}" aria-label="${escapeHtml(localize("CCT.RollInitiative"))}">D</button>` : ""}
+    ${entry.canRemoveCombatant ? `<button type="button" class="cct-entry-action cct-remove-combatant" data-action="remove-combatant" data-combatant-id="${escapeHtml(entry.combatantId)}" title="${escapeHtml(localize("CCT.RemoveCombatant"))}" aria-label="${escapeHtml(localize("CCT.RemoveCombatant"))}">X</button>` : ""}
+    ${entry.canDeleteCountdown ? `<button type="button" class="cct-entry-action cct-remove-countdown" data-action="countdown-delete" data-countdown-id="${escapeHtml(entry.countdownId)}" title="${escapeHtml(localize("CCT.Countdown.delete"))}" aria-label="${escapeHtml(localize("CCT.Countdown.delete"))}">X</button>` : ""}
   </li>`;
 }
 
@@ -248,6 +273,7 @@ export class TimelineController {
     this.started = false;
     this.dragState = null;
     this.lastCombat = null;
+    this.countdownEditor = null;
     this.boundRender = () => this.scheduleRender();
     this.boundResize = () => this.applyPlacement();
     this.boundPointerMove = (event) => this.onPointerMove(event);
@@ -297,6 +323,7 @@ export class TimelineController {
     window.removeEventListener("resize", this.boundResize);
     document.removeEventListener("pointermove", this.boundPointerMove);
     document.removeEventListener("pointerup", this.boundPointerUp);
+    this.closeCountdownEditor();
     this.root?.remove();
     this.root = null;
     this.started = false;
@@ -468,7 +495,8 @@ export class TimelineController {
     if (combatant) {
       const combatantDocument = this.findCombatant(combatant.dataset.combatantId);
       if (!combatantDocument) return;
-      if (event.shiftKey) panToCombatantToken(combatantDocument);
+      if (event.altKey && game.user?.isGM) void this.rollCombatantInitiative(combatant);
+      else if (event.shiftKey) panToCombatantToken(combatantDocument);
       else selectCombatantToken(combatantDocument);
       return;
     }
@@ -555,6 +583,9 @@ export class TimelineController {
       case "remove-combatant":
         await this.removeCombatant(target);
         break;
+      case "roll-initiative":
+        await this.rollCombatantInitiative(target);
+        break;
       case "drag":
         break;
       case "countdown-plus":
@@ -609,6 +640,22 @@ export class TimelineController {
       await combat.deleteEmbeddedDocuments("Combatant", [combatantId]);
     }
     ui.notifications?.info?.(localize("CCT.Combatant.removed"));
+    this.scheduleRender();
+  }
+
+  async rollCombatantInitiative(target) {
+    if (!game.user?.isGM) return ui.notifications?.warn(localize("CCT.Errors.gmOnly"));
+    const combatantId = target.closest("[data-combatant-id]")?.dataset.combatantId;
+    const combat = getViewedCombat();
+    if (!combatantId || !combat) return ui.notifications?.warn(localize("CCT.Errors.noCombat"));
+
+    if (typeof combat.rollInitiative === "function") {
+      await combat.rollInitiative([combatantId], { updateTurn: true });
+    } else {
+      const combatant = this.findCombatant(combatantId);
+      await combatant?.rollInitiative?.();
+    }
+    ui.notifications?.info?.(localize("CCT.InitiativeRolled"));
     this.scheduleRender();
   }
 
@@ -688,11 +735,95 @@ export class TimelineController {
     const countdown = countdownId
       ? getCountdowns(combat).find((entry) => entry.id === countdownId)
       : null;
+    if (countdown) this.openCountdownEditor(combat, countdown);
+  }
+
+  closeCountdownEditor() {
+    this.countdownEditor?.remove();
+    this.countdownEditor = null;
+  }
+
+  countdownEditorHtml(countdown) {
+    const zeroOptions = Object.values(ZERO_BEHAVIORS)
+      .map((value) => `<option value="${escapeHtml(value)}" ${countdown.zeroBehavior === value ? "selected" : ""}>${escapeHtml(localize(`CCT.ZeroBehavior.${value}`))}</option>`)
+      .join("");
+    return `<form class="cct-countdown-editor" aria-label="${escapeHtml(localize("CCT.CountdownConfig.title"))}">
+      <header class="cct-countdown-editor-header">
+        <strong>${escapeHtml(localize("CCT.CountdownConfig.title"))}</strong>
+        <button type="button" data-editor-action="close" title="${escapeHtml(localize("CCT.Close"))}" aria-label="${escapeHtml(localize("CCT.Close"))}">X</button>
+      </header>
+      <label>${escapeHtml(localize("CCT.Countdown.name"))}<input type="text" name="name" value="${escapeHtml(countdown.name)}" maxlength="80" required></label>
+      <label>${escapeHtml(localize("CCT.Countdown.shortLabel"))}<input type="text" name="shortLabel" value="${escapeHtml(countdown.shortLabel)}" maxlength="10"></label>
+      <div class="cct-countdown-editor-grid">
+        <label>${escapeHtml(localize("CCT.Countdown.startingCount"))}<input type="number" name="startingCount" min="0" max="999" step="1" value="${escapeHtml(countdown.startingCount)}" required></label>
+        <label>${escapeHtml(localize("CCT.Countdown.currentCount"))}<input type="number" name="currentCount" min="0" max="999" step="1" value="${escapeHtml(countdown.currentCount)}" required></label>
+      </div>
+      <label>${escapeHtml(localize("CCT.Countdown.initiative"))}<input type="number" name="initiative" step="0.01" value="${escapeHtml(countdown.initiative)}" required></label>
+      <label>${escapeHtml(localize("CCT.Countdown.zeroBehavior"))}<select name="zeroBehavior">${zeroOptions}</select></label>
+      <label class="cct-countdown-editor-check"><input type="checkbox" name="active" ${countdown.active ? "checked" : ""}> ${escapeHtml(localize("CCT.Countdown.active"))}</label>
+      <footer class="cct-countdown-editor-footer">
+        <button type="submit">${escapeHtml(localize("CCT.Save"))}</button>
+        <button type="button" data-editor-action="delete">${escapeHtml(localize("CCT.Delete"))}</button>
+      </footer>
+    </form>`;
+  }
+
+  openCountdownEditor(combat, countdown) {
+    this.closeCountdownEditor();
+    const wrapper = document.createElement("div");
+    wrapper.className = "cct-countdown-editor-shell";
+    wrapper.innerHTML = this.countdownEditorHtml(countdown);
+    document.body.appendChild(wrapper);
+    this.countdownEditor = wrapper;
+
+    const form = wrapper.querySelector("form");
+    form?.querySelector("input[name='name']")?.focus();
+    wrapper.addEventListener("click", (event) => {
+      if (event.target === wrapper || event.target.closest("[data-editor-action='close']")) {
+        event.preventDefault();
+        this.closeCountdownEditor();
+        return;
+      }
+      if (event.target.closest("[data-editor-action='delete']")) {
+        event.preventDefault();
+        void this.deleteCountdownFromEditor(combat, countdown.id);
+      }
+    });
+    form?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      void this.saveCountdownFromEditor(combat, countdown.id, new FormData(form));
+    });
+  }
+
+  async saveCountdownFromEditor(combat, countdownId, formData) {
     try {
-      const { CountdownConfigApplication } = await import("./countdown-config.js?v=0.1.12");
-      await renderApplication(new CountdownConfigApplication({ combat, countdown }));
+      await updateCountdown(combat, countdownId, {
+        name: formData.get("name"),
+        shortLabel: formData.get("shortLabel"),
+        startingCount: Number(formData.get("startingCount")),
+        currentCount: Number(formData.get("currentCount")),
+        initiative: Number(formData.get("initiative")),
+        zeroBehavior: formData.get("zeroBehavior"),
+        active: formData.get("active") === "on"
+      });
+      ui.notifications?.info?.(localize("CCT.Countdown.saved"));
+      this.closeCountdownEditor();
+      this.scheduleRender();
     } catch (error) {
-      reportError("Countdown configuration could not open.", error);
+      reportError("Countdown save failed.", error);
+      ui.notifications?.error?.(localize("CCT.Errors.countdownSave"));
+    }
+  }
+
+  async deleteCountdownFromEditor(combat, countdownId) {
+    try {
+      await deleteCountdown(combat, countdownId);
+      ui.notifications?.info?.(localize("CCT.Countdown.deleted"));
+      this.closeCountdownEditor();
+      this.scheduleRender();
+    } catch (error) {
+      reportError("Countdown delete failed.", error);
+      ui.notifications?.error?.(localize("CCT.Errors.countdownDelete"));
     }
   }
 
