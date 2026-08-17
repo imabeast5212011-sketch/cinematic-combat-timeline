@@ -3,7 +3,7 @@ import {
   MODULE_ID,
   ZERO_BEHAVIORS,
   localize
-} from "./constants.js?v=0.1.11";
+} from "./constants.js?v=0.1.12";
 import {
   getCombatTurns,
   getCurrentTurnIndex,
@@ -15,10 +15,10 @@ import {
   isAnonymousCombatant,
   isStarted,
   shouldShowCombatant
-} from "./combat-adapter.js?v=0.1.11";
-import { buildImageStyle, getActorTimelineConfig, getCombatantImageData, normalizeColor } from "./image-adapter.js?v=0.1.11";
-import { buildRoundSequence, getCountdowns, isCountdownRenderedInTimeline } from "./countdown-service.js?v=0.1.11";
-import { getTimelineSettings } from "./settings.js?v=0.1.11";
+} from "./combat-adapter.js?v=0.1.12";
+import { buildImageStyle, getActorTimelineConfig, getCombatantImageData, normalizeColor } from "./image-adapter.js?v=0.1.12";
+import { buildRoundSequence, getCountdowns, isCountdownRenderedInTimeline } from "./countdown-service.js?v=0.1.12";
+import { getTimelineSettings } from "./settings.js?v=0.1.12";
 
 function initiativeLabel(value) {
   const number = Number(value);
@@ -85,6 +85,7 @@ function buildCombatantEntry(combatant, context) {
       anonymous && "cct-anonymous"
     ]),
     canInteract: !anonymous,
+    canRemoveCombatant: Boolean(game.user?.isGM && !anonymous && combatant.id),
     showDefeated: defeated,
     showPreviewBadge: isPreview,
     showInitiative: Boolean(settings.expandedLabels && initiative),

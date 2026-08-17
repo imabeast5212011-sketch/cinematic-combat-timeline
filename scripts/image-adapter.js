@@ -1,5 +1,5 @@
-import { ASSET_PATHS, FLAGS, MODULE_ID, clampNumber } from "./constants.js?v=0.1.11";
-import { isAnonymousCombatant } from "./combat-adapter.js?v=0.1.11";
+import { ASSET_PATHS, FLAGS, MODULE_ID, clampNumber } from "./constants.js?v=0.1.12";
+import { isAnonymousCombatant } from "./combat-adapter.js?v=0.1.12";
 
 const SAFE_COLOR_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 const UNSAFE_PATH_PATTERN = /(?:^\/|^[a-z]:|\\|(?:^|\/)\.\.(?:\/|$)|^\w+:)/i;

@@ -1,5 +1,5 @@
-import { ANCHORS, MODULE_ID, SELECTOR, SETTINGS, TIE_PLACEMENTS, ZERO_BEHAVIORS, clampNumber, localize } from "./constants.js?v=0.1.11";
-import { reportError } from "./foundry-compat.js?v=0.1.11";
+import { ANCHORS, MODULE_ID, SELECTOR, SETTINGS, TIE_PLACEMENTS, ZERO_BEHAVIORS, clampNumber, localize } from "./constants.js?v=0.1.12";
+import { reportError } from "./foundry-compat.js?v=0.1.12";
 import {
   getCombatTurns,
   getCurrentTurnIndex,
@@ -7,8 +7,8 @@ import {
   openCombatantActor,
   panToCombatantToken,
   selectCombatantToken
-} from "./combat-adapter.js?v=0.1.11";
-import { getTimelineSettings, setClientSetting } from "./settings.js?v=0.1.11";
+} from "./combat-adapter.js?v=0.1.12";
+import { getTimelineSettings, setClientSetting } from "./settings.js?v=0.1.12";
 import {
   adjustCountdown,
   createCountdown,
@@ -17,9 +17,9 @@ import {
   resetCountdown,
   setCountdownActive,
   setCountdownTriggered
-} from "./countdown-service.js?v=0.1.11";
-import { processCountdownProgression } from "./countdown-authority.js?v=0.1.11";
-import { buildTimelineState } from "./timeline-state.js?v=0.1.11";
+} from "./countdown-service.js?v=0.1.12";
+import { processCountdownProgression } from "./countdown-authority.js?v=0.1.12";
+import { buildTimelineState } from "./timeline-state.js?v=0.1.12";
 
 const TEMPLATE_PATH = `modules/${MODULE_ID}/templates/timeline.hbs`;
 const ANCHOR_ORDER = [
@@ -28,7 +28,7 @@ const ANCHOR_ORDER = [
   ANCHORS.MIDDLE_LEFT,
   ANCHORS.UPPER_LEFT
 ];
-const DEBUG_VERSION_LABEL = "CCT 0.1.11";
+const DEBUG_VERSION_LABEL = "CCT 0.1.12";
 
 function errorText(error, maxLength = 90) {
   const text = error?.message || error?.stack || String(error ?? "Unknown error");
@@ -102,6 +102,16 @@ function minimalEntryHtml(entry) {
   }
   const marker = entry.current ? "NOW" : (entry.isCountdown ? escapeHtml(entry.count) : "");
   const label = entry.label || entry.initiative || "";
+  const removeButton = entry.canRemoveCombatant && entry.combatantId
+    ? `<button
+      type="button"
+      class="cct-remove-combatant"
+      data-action="remove-combatant"
+      data-combatant-id="${escapeHtml(entry.combatantId)}"
+      title="${escapeHtml(localize("CCT.RemoveCombatant"))}"
+      aria-label="${escapeHtml(localize("CCT.RemoveCombatant"))}"
+      style="position:absolute;right:-7px;top:-4px;display:grid;place-items:center;width:14px;height:14px;padding:0;border:1px solid rgba(255,176,168,.86);border-radius:999px;background:#1a0808;color:#ffb0a8;font-size:9px;font-weight:800;line-height:1;z-index:2;">X</button>`
+    : "";
   return `<li
     class="cct-minimal-entry"
     style="position:relative;display:grid;place-items:center;width:42px;min-height:42px;margin:2px auto;padding:0;list-style:none;"
@@ -115,6 +125,7 @@ function minimalEntryHtml(entry) {
       data-fallback="${escapeHtml(entry.fallbackImage)}"
       alt=""
       style="width:38px;height:38px;border:2px solid #d6b35a;border-radius:${entry.isCountdown ? "999px" : "6px"};object-fit:cover;background:#111;">
+    ${removeButton}
     ${marker ? `<span style="position:absolute;right:-2px;bottom:-1px;min-width:16px;padding:1px 3px;border-radius:999px;background:#111;color:#ffe58f;font-size:8px;font-weight:800;text-align:center;">${escapeHtml(marker)}</span>` : ""}
     ${label ? `<span style="margin-top:2px;max-width:62px;overflow:hidden;color:#f4f1e8;font-size:9px;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(label)}</span>` : ""}
   </li>`;
@@ -176,6 +187,7 @@ function fallbackEntryHtml(entry) {
   return `<li class="${escapeHtml(entry.classes)}" style="${escapeHtml(entry.style)}" ${dataAttributes} role="button" tabindex="0" title="${escapeHtml(entry.tooltip)}" aria-label="${escapeHtml(entry.ariaLabel)}">
     <div class="cct-icon-frame">
       <img class="cct-icon" src="${escapeHtml(entry.image)}" data-fallback="${escapeHtml(entry.fallbackImage)}" alt="">
+      ${entry.canRemoveCombatant ? `<button type="button" class="cct-remove-combatant" data-action="remove-combatant" data-combatant-id="${escapeHtml(entry.combatantId)}" title="${escapeHtml(localize("CCT.RemoveCombatant"))}" aria-label="${escapeHtml(localize("CCT.RemoveCombatant"))}">X</button>` : ""}
       ${entry.current ? '<span class="cct-now" aria-hidden="true">NOW</span>' : ""}
       ${entry.isCountdown ? `<span class="cct-count" aria-hidden="true">${escapeHtml(entry.count)}</span>` : ""}
       ${entry.showDefeated ? '<span class="cct-defeated-mark" aria-hidden="true">x</span>' : ""}
@@ -462,12 +474,21 @@ export class TimelineController {
     }
 
     const countdown = event.target.closest("[data-countdown-id]");
-    if (countdown && game.user?.isGM) {
-      void this.openCountdownConfig(countdown.dataset.countdownId);
-    }
+    if (countdown && game.user?.isGM) return;
   }
 
   onDoubleClick(event) {
+    const actionTarget = event.target.closest("[data-action]");
+    if (actionTarget) return;
+
+    const countdown = event.target.closest("[data-countdown-id]");
+    if (countdown && game.user?.isGM) {
+      event.preventDefault();
+      event.stopPropagation();
+      void this.openCountdownConfig(countdown.dataset.countdownId);
+      return;
+    }
+
     const combatant = event.target.closest("[data-combatant-id]");
     if (!combatant) return;
     const settings = getTimelineSettings();
@@ -531,6 +552,9 @@ export class TimelineController {
       case "end-combat":
         await this.endCombat();
         break;
+      case "remove-combatant":
+        await this.removeCombatant(target);
+        break;
       case "drag":
         break;
       case "countdown-plus":
@@ -569,6 +593,23 @@ export class TimelineController {
     const combat = getViewedCombat();
     if (!id || !combat) return;
     await operation(combat, id);
+  }
+
+  async removeCombatant(target) {
+    if (!game.user?.isGM) return ui.notifications?.warn(localize("CCT.Errors.gmOnly"));
+    const combatantId = target.closest("[data-combatant-id]")?.dataset.combatantId;
+    const combat = getViewedCombat();
+    if (!combatantId || !combat) return ui.notifications?.warn(localize("CCT.Errors.noCombat"));
+    const combatant = this.findCombatant(combatantId);
+    if (!combatant) return;
+
+    if (typeof combatant.delete === "function") {
+      await combatant.delete();
+    } else if (typeof combat.deleteEmbeddedDocuments === "function") {
+      await combat.deleteEmbeddedDocuments("Combatant", [combatantId]);
+    }
+    ui.notifications?.info?.(localize("CCT.Combatant.removed"));
+    this.scheduleRender();
   }
 
   currentCombatantInitiative(combat) {
@@ -648,7 +689,7 @@ export class TimelineController {
       ? getCountdowns(combat).find((entry) => entry.id === countdownId)
       : null;
     try {
-      const { CountdownConfigApplication } = await import("./countdown-config.js?v=0.1.11");
+      const { CountdownConfigApplication } = await import("./countdown-config.js?v=0.1.12");
       await renderApplication(new CountdownConfigApplication({ combat, countdown }));
     } catch (error) {
       reportError("Countdown configuration could not open.", error);

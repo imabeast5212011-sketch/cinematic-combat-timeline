@@ -45,7 +45,7 @@ Hooks.once("ready", () => {
     };
   }
 
-  console.info(`${MODULE_TITLE} | Ready`);
+  console.info(`${MODULE_TITLE} | Ready 0.1.12`);
 });
 
 Hooks.once("hotReload", () => {
