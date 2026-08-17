@@ -337,6 +337,10 @@
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
 }
 
+.cct-boot-badge {
+  color: #ffd8d8;
+}
+
 .cct-collapsed-image {
   grid-area: 1 / 1;
   width: calc(36px * var(--cct-scale));

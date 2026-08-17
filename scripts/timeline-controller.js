@@ -26,6 +26,15 @@ const ANCHOR_ORDER = [
   ANCHORS.UPPER_LEFT
 ];
 
+function bootBadgeHtml(label = "CCT") {
+  return `<button type="button"
+    class="cct-collapsed-button cct-boot-badge"
+    data-action="toggle-collapse"
+    style="display:grid;place-items:center;width:48px;height:48px;border:2px solid #ff3b3b;border-radius:999px;background:#111;color:#ffd8d8;font-weight:800;font-size:12px;box-shadow:0 0 0 2px rgba(0,0,0,.55),0 0 18px rgba(255,59,59,.55);"
+    title="Cinematic Combat Timeline"
+    aria-label="Cinematic Combat Timeline">${escapeHtml(label)}</button>`;
+}
+
 function renderApplication(app) {
   try {
     app.render({ force: true });
@@ -116,6 +125,15 @@ export class TimelineController {
     this.root.className = `${MODULE_ID} cct-root`;
     this.root.setAttribute("aria-live", "polite");
     this.root.dataset.status = "mounted";
+    Object.assign(this.root.style, {
+      position: "fixed",
+      top: "140px",
+      right: "18px",
+      zIndex: "10000",
+      display: "block",
+      pointerEvents: "auto"
+    });
+    this.root.innerHTML = bootBadgeHtml("CCT");
     this.root.addEventListener("click", (event) => this.onClick(event));
     this.root.addEventListener("dblclick", (event) => this.onDoubleClick(event));
     this.root.addEventListener("keydown", (event) => this.onKeyDown(event));
@@ -221,7 +239,10 @@ export class TimelineController {
       return;
     }
     if (!state.enabled) {
-      this.root.hidden = true;
+      this.root.hidden = false;
+      this.root.dataset.status = "disabled-setting";
+      this.root.innerHTML = bootBadgeHtml("OFF");
+      this.applyPlacement();
       return;
     }
     this.root.hidden = false;
