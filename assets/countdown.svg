@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Countdown marker">
+  <rect width="64" height="64" rx="32" fill="#151819"/>
+  <circle cx="32" cy="34" r="20" fill="none" stroke="#6fc6d6" stroke-width="5"/>
+  <path d="M25 8h14" stroke="#6fc6d6" stroke-width="5" stroke-linecap="round"/>
+  <path d="M32 34V21m0 13l10 7" stroke="#f8f3dc" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,39 @@
+{
+  "id": "cinematic-combat-timeline",
+  "title": "Cinematic Combat Timeline",
+  "description": "A compact, purely visual combat timeline for Foundry VTT v14. It mirrors the authoritative combat order and adds optional visual countdown markers without changing initiative or combat mechanics.",
+  "version": "0.1.0",
+  "type": "module",
+  "authors": [
+    {
+      "name": "Codex"
+    }
+  ],
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "dnd5e",
+        "type": "system"
+      }
+    ]
+  },
+  "esmodules": [
+    "scripts/main.js"
+  ],
+  "styles": [
+    "styles/timeline.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "media": [],
+  "readme": "README.md"
+}

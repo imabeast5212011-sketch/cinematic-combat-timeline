@@ -1,0 +1,81 @@
+<section class="cct-config-body">
+  <div class="form-group">
+    <label for="cct-countdown-name">{{localize 'CCT.Countdown.name'}}</label>
+    <input id="cct-countdown-name" type="text" name="name" value="{{data.name}}" maxlength="80" required>
+  </div>
+
+  <div class="form-group">
+    <label for="cct-countdown-short">{{localize 'CCT.Countdown.shortLabel'}}</label>
+    <input id="cct-countdown-short" type="text" name="shortLabel" value="{{data.shortLabel}}" maxlength="10">
+  </div>
+
+  <div class="cct-form-grid">
+    <div class="form-group">
+      <label for="cct-countdown-start">{{localize 'CCT.Countdown.startingCount'}}</label>
+      <input id="cct-countdown-start" type="number" name="startingCount" min="0" max="999" step="1" value="{{data.startingCount}}" required>
+    </div>
+    <div class="form-group">
+      <label for="cct-countdown-current">{{localize 'CCT.Countdown.currentCount'}}</label>
+      <input id="cct-countdown-current" type="number" name="currentCount" min="0" max="999" step="1" value="{{data.currentCount}}">
+    </div>
+  </div>
+
+  <div class="cct-form-grid">
+    <div class="form-group">
+      <label for="cct-countdown-init">{{localize 'CCT.Countdown.initiative'}}</label>
+      <input id="cct-countdown-init" type="number" name="initiative" step="0.01" value="{{data.initiative}}" required>
+    </div>
+    <div class="form-group">
+      <label for="cct-countdown-tie">{{localize 'CCT.Countdown.tiePlacement'}}</label>
+      <select id="cct-countdown-tie" name="tiePlacement">
+        <option value="before" {{#if tieBefore}}selected{{/if}}>{{localize 'CCT.Tie.before'}}</option>
+        <option value="after" {{#if tieAfter}}selected{{/if}}>{{localize 'CCT.Tie.after'}}</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="cct-countdown-icon">{{localize 'CCT.Countdown.icon'}}</label>
+    <div class="cct-path-row">
+      <input id="cct-countdown-icon" type="text" name="icon" value="{{data.icon}}" maxlength="240">
+      <button type="button" data-action="browseIcon" title="{{localize 'CCT.Browse'}}" aria-label="{{localize 'CCT.Browse'}}">...</button>
+    </div>
+  </div>
+
+  <div class="cct-form-grid">
+    <div class="form-group">
+      <label for="cct-countdown-color">{{localize 'CCT.Countdown.accentColor'}}</label>
+      <input id="cct-countdown-color" type="color" name="accentColor" value="{{data.accentColor}}">
+    </div>
+    <div class="form-group">
+      <label for="cct-countdown-zero">{{localize 'CCT.Countdown.zeroBehavior'}}</label>
+      <select id="cct-countdown-zero" name="zeroBehavior">
+        <option value="remain" {{#if zeroRemain}}selected{{/if}}>{{localize 'CCT.ZeroBehavior.remain'}}</option>
+        <option value="hide" {{#if zeroHide}}selected{{/if}}>{{localize 'CCT.ZeroBehavior.hide'}}</option>
+        <option value="disable" {{#if zeroDisable}}selected{{/if}}>{{localize 'CCT.ZeroBehavior.disable'}}</option>
+        <option value="reset" {{#if zeroReset}}selected{{/if}}>{{localize 'CCT.ZeroBehavior.reset'}}</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="cct-countdown-visibility">{{localize 'CCT.Countdown.visibility'}}</label>
+    <select id="cct-countdown-visibility" name="visibility">
+      <option value="everyone" {{#if visibilityEveryone}}selected{{/if}}>{{localize 'CCT.Visibility.everyone'}}</option>
+    </select>
+    <p class="notes">{{privacyNote}}</p>
+  </div>
+
+  <div class="cct-checkbox-row">
+    <label><input type="checkbox" name="active" {{#if data.active}}checked{{/if}}> {{localize 'CCT.Countdown.active'}}</label>
+    <label><input type="checkbox" name="triggered" {{#if data.triggered}}checked{{/if}}> {{localize 'CCT.Countdown.triggered'}}</label>
+  </div>
+</section>
+
+<footer class="cct-config-footer">
+  <button type="submit"><i class="fa-solid fa-save"></i> {{localize 'CCT.Save'}}</button>
+  {{#if canDelete}}
+  <button type="button" data-action="reset"><i class="fa-solid fa-rotate-left"></i> {{localize 'CCT.Countdown.reset'}}</button>
+  <button type="button" data-action="delete"><i class="fa-solid fa-trash"></i> {{localize 'CCT.Delete'}}</button>
+  {{/if}}
+</footer>

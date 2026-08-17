@@ -1,0 +1,78 @@
+{{#if collapsed}}
+<button type="button" class="cct-collapsed-button" data-action="toggle-collapse" title="{{controls.collapse}}" aria-label="{{currentAria}}">
+  <img class="cct-collapsed-image" src="{{currentImage}}" data-fallback="{{currentFallbackImage}}" alt="">
+  {{#if roundLabel}}<span class="cct-collapsed-round">{{roundLabel}}</span>{{/if}}
+</button>
+{{else}}
+<section class="cct-panel" aria-label="{{localize 'CCT.TimelineAria'}}">
+  <header class="cct-toolbar">
+    <button type="button" class="cct-tool cct-drag-handle" data-action="drag" title="{{localize 'CCT.DragTimeline'}}" aria-label="{{localize 'CCT.DragTimeline'}}">::</button>
+    <span class="cct-round-label">{{roundLabel}}</span>
+    <button type="button" class="cct-tool" data-action="toggle-labels" title="{{controls.labels}}" aria-label="{{controls.labels}}">T</button>
+    <button type="button" class="cct-tool" data-action="cycle-anchor" title="{{controls.anchor}}" aria-label="{{controls.anchor}}">A</button>
+    <button type="button" class="cct-tool" data-action="scale-down" title="{{controls.scaleDown}}" aria-label="{{controls.scaleDown}}">-</button>
+    <button type="button" class="cct-tool" data-action="scale-up" title="{{controls.scaleUp}}" aria-label="{{controls.scaleUp}}">+</button>
+    {{#if canCreateCountdown}}
+    <button type="button" class="cct-tool" data-action="new-countdown" title="{{controls.addCountdown}}" aria-label="{{controls.addCountdown}}">C</button>
+    {{/if}}
+    <button type="button" class="cct-tool" data-action="toggle-collapse" title="{{controls.collapse}}" aria-label="{{controls.collapse}}">_</button>
+  </header>
+
+  {{#if hasCombat}}
+  <ol class="cct-entry-list">
+    {{#each entries}}
+      {{#if isDivider}}
+      <li class="{{classes}}" role="separator" aria-label="{{ariaLabel}}">
+        <span></span>
+      </li>
+      {{else}}
+      <li class="{{classes}}"
+          style="{{style}}"
+          {{#if combatantId}}data-combatant-id="{{combatantId}}"{{/if}}
+          {{#if countdownId}}data-countdown-id="{{countdownId}}"{{/if}}
+          {{#if canInteract}}role="button"{{else}}{{#if canEditCountdown}}role="button"{{else}}role="img"{{/if}}{{/if}}
+          tabindex="0"
+          title="{{tooltip}}"
+          aria-label="{{ariaLabel}}">
+        <div class="cct-icon-frame">
+          <img class="cct-icon" src="{{image}}" data-fallback="{{fallbackImage}}" alt="">
+          {{#if current}}<span class="cct-now" aria-hidden="true">NOW</span>{{/if}}
+          {{#if isCountdown}}<span class="cct-count" aria-hidden="true">{{count}}</span>{{/if}}
+          {{#if showDefeated}}<span class="cct-defeated-mark" aria-hidden="true">x</span>{{/if}}
+          {{#if showPreviewBadge}}<span class="cct-preview-mark" aria-hidden="true">N</span>{{/if}}
+        </div>
+        {{#if label}}
+        <div class="cct-label-row">
+          <span class="cct-entry-label">{{label}}</span>
+          {{#if showInitiative}}<span class="cct-initiative">{{initiative}}</span>{{/if}}
+        </div>
+        {{/if}}
+        {{#if canEditCountdown}}
+          {{#if label}}
+          <div class="cct-countdown-tools" aria-label="{{localize 'CCT.CountdownControls'}}">
+            <button type="button" data-action="countdown-minus" title="{{localize 'CCT.Countdown.decrease'}}" aria-label="{{localize 'CCT.Countdown.decrease'}}">-</button>
+            <button type="button" data-action="countdown-plus" title="{{localize 'CCT.Countdown.increase'}}" aria-label="{{localize 'CCT.Countdown.increase'}}">+</button>
+            <button type="button" data-action="countdown-reset" title="{{localize 'CCT.Countdown.reset'}}" aria-label="{{localize 'CCT.Countdown.reset'}}">R</button>
+            {{#if triggered}}
+            <button type="button" data-action="countdown-untrigger" title="{{localize 'CCT.Countdown.untrigger'}}" aria-label="{{localize 'CCT.Countdown.untrigger'}}">0</button>
+            {{else}}
+            <button type="button" data-action="countdown-trigger" title="{{localize 'CCT.Countdown.trigger'}}" aria-label="{{localize 'CCT.Countdown.trigger'}}">0</button>
+            {{/if}}
+            {{#if active}}
+            <button type="button" data-action="countdown-disable" title="{{localize 'CCT.Countdown.disable'}}" aria-label="{{localize 'CCT.Countdown.disable'}}">I</button>
+            {{else}}
+            <button type="button" data-action="countdown-enable" title="{{localize 'CCT.Countdown.enable'}}" aria-label="{{localize 'CCT.Countdown.enable'}}">I</button>
+            {{/if}}
+            <button type="button" data-action="countdown-delete" title="{{localize 'CCT.Countdown.delete'}}" aria-label="{{localize 'CCT.Countdown.delete'}}">X</button>
+          </div>
+          {{/if}}
+        {{/if}}
+      </li>
+      {{/if}}
+    {{/each}}
+  </ol>
+  {{else}}
+  <div class="cct-no-combat">{{noCombatLabel}}</div>
+  {{/if}}
+</section>
+{{/if}}

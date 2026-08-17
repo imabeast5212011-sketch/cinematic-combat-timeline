@@ -1,0 +1,49 @@
+<section class="cct-config-body">
+  <div class="cct-actor-preview" style="{{previewStyle}}">
+    <img src="{{preview}}" data-fallback="modules/cinematic-combat-timeline/assets/unknown-combatant.svg" alt="{{localize 'CCT.ActorConfig.preview'}}">
+  </div>
+
+  <div class="form-group">
+    <label for="cct-actor-icon">{{localize 'CCT.ActorConfig.icon'}}</label>
+    <div class="cct-path-row">
+      <input id="cct-actor-icon" type="text" name="icon" value="{{data.icon}}" maxlength="240">
+      <button type="button" data-action="browseIcon" title="{{localize 'CCT.Browse'}}" aria-label="{{localize 'CCT.Browse'}}">...</button>
+    </div>
+  </div>
+
+  <div class="cct-form-grid">
+    <div class="form-group">
+      <label for="cct-focal-x">{{localize 'CCT.ActorConfig.focalX'}}</label>
+      <input id="cct-focal-x" type="range" name="focalX" min="0" max="100" step="1" value="{{data.focalX}}">
+    </div>
+    <div class="form-group">
+      <label for="cct-focal-y">{{localize 'CCT.ActorConfig.focalY'}}</label>
+      <input id="cct-focal-y" type="range" name="focalY" min="0" max="100" step="1" value="{{data.focalY}}">
+    </div>
+  </div>
+
+  <div class="cct-form-grid">
+    <div class="form-group">
+      <label for="cct-zoom">{{localize 'CCT.ActorConfig.zoom'}}</label>
+      <input id="cct-zoom" type="number" name="zoom" min="1" max="3" step="0.05" value="{{data.zoom}}">
+    </div>
+    <div class="form-group">
+      <label for="cct-accent">{{localize 'CCT.ActorConfig.accentColor'}}</label>
+      <input id="cct-accent" type="text" name="accentColor" value="{{data.accentColor}}" maxlength="9">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="cct-short-name">{{localize 'CCT.ActorConfig.shortName'}}</label>
+    <input id="cct-short-name" type="text" name="shortName" value="{{data.shortName}}" maxlength="24">
+  </div>
+
+  <div class="cct-checkbox-row">
+    <label><input type="checkbox" name="flip" {{#if data.flip}}checked{{/if}}> {{localize 'CCT.ActorConfig.flip'}}</label>
+  </div>
+</section>
+
+<footer class="cct-config-footer">
+  <button type="submit"><i class="fa-solid fa-save"></i> {{localize 'CCT.Save'}}</button>
+  <button type="button" data-action="clear"><i class="fa-solid fa-eraser"></i> {{localize 'CCT.Clear'}}</button>
+</footer>
