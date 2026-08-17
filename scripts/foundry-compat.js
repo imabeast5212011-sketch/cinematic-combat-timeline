@@ -40,3 +40,8 @@ export function getApplicationV2Api() {
 export function reportError(context, error) {
   console.error(`${MODULE_TITLE} | ${context}`, error);
 }
+
+export function reportWarning(context, data = undefined) {
+  if (data === undefined) console.warn(`${MODULE_TITLE} | ${context}`);
+  else console.warn(`${MODULE_TITLE} | ${context}`, data);
+}

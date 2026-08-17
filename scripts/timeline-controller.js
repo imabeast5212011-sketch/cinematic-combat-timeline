@@ -1,5 +1,5 @@
 import { ANCHORS, MODULE_ID, SELECTOR, SETTINGS, clampNumber, localize } from "./constants.js";
-import { renderTemplateCompat, reportError } from "./foundry-compat.js";
+import { renderTemplateCompat, reportError, reportWarning } from "./foundry-compat.js";
 import {
   getViewedCombat,
   openCombatantActor,
@@ -96,6 +96,8 @@ export class TimelineController {
     this.root = null;
     this.hookIds = [];
     this.renderFrame = null;
+    this.renderTimer = null;
+    this.rendering = false;
     this.started = false;
     this.dragState = null;
     this.lastCombat = null;
@@ -113,6 +115,7 @@ export class TimelineController {
     this.root.id = SELECTOR.ROOT_ID;
     this.root.className = `${MODULE_ID} cct-root`;
     this.root.setAttribute("aria-live", "polite");
+    this.root.dataset.status = "mounted";
     this.root.addEventListener("click", (event) => this.onClick(event));
     this.root.addEventListener("dblclick", (event) => this.onDoubleClick(event));
     this.root.addEventListener("keydown", (event) => this.onKeyDown(event));
@@ -121,6 +124,7 @@ export class TimelineController {
     document.body.appendChild(this.root);
     this.registerHooks();
     window.addEventListener("resize", this.boundResize);
+    void this.safeRender("initial");
     this.scheduleRender();
   }
 
@@ -128,7 +132,10 @@ export class TimelineController {
     for (const [hook, id] of this.hookIds) Hooks.off(hook, id);
     this.hookIds = [];
     if (this.renderFrame) cancelAnimationFrame(this.renderFrame);
+    if (this.renderTimer) clearTimeout(this.renderTimer);
     this.renderFrame = null;
+    this.renderTimer = null;
+    this.rendering = false;
     window.removeEventListener("resize", this.boundResize);
     document.removeEventListener("pointermove", this.boundPointerMove);
     document.removeEventListener("pointerup", this.boundPointerUp);
@@ -165,11 +172,38 @@ export class TimelineController {
   }
 
   scheduleRender() {
-    if (!this.started || this.renderFrame) return;
-    this.renderFrame = requestAnimationFrame(() => {
+    if (!this.started || this.renderFrame || this.renderTimer) return;
+    const run = () => {
+      if (this.renderTimer) clearTimeout(this.renderTimer);
+      this.renderTimer = null;
       this.renderFrame = null;
-      void this.render();
-    });
+      void this.safeRender("scheduled");
+    };
+
+    if (typeof requestAnimationFrame === "function") {
+      this.renderFrame = requestAnimationFrame(run);
+    }
+    this.renderTimer = setTimeout(run, 75);
+  }
+
+  async safeRender(reason) {
+    if (!this.started || this.rendering) return;
+    this.rendering = true;
+    if (this.root) this.root.dataset.status = `rendering-${reason}`;
+    try {
+      await this.render();
+      if (this.root) this.root.dataset.status = "rendered";
+    } catch (error) {
+      reportError("Timeline render failed.", error);
+      if (this.root) {
+        this.root.hidden = false;
+        this.root.dataset.status = "render-error";
+        this.root.innerHTML = `<button type="button" class="cct-collapsed-button" title="Cinematic Combat Timeline">CCT</button>`;
+        this.applyPlacement();
+      }
+    } finally {
+      this.rendering = false;
+    }
   }
 
   async render() {
@@ -195,9 +229,22 @@ export class TimelineController {
     this.root.dataset.expanded = String(state.expandedLabels);
     this.root.dataset.reduceAnimation = String(state.reduceAnimation);
     this.root.dataset.anchor = state.anchor;
+    this.root.dataset.entries = String(state.entries?.length ?? 0);
+    this.root.dataset.hasCombat = String(state.hasCombat);
+    this.root.dataset.started = String(state.started);
     this.root.style.setProperty("--cct-scale", String(state.scale));
     try {
-      this.root.innerHTML = await renderTemplateCompat(TEMPLATE_PATH, state);
+      const html = await renderTemplateCompat(TEMPLATE_PATH, state);
+      if (typeof html === "string" && html.trim().length > 0) {
+        this.root.innerHTML = html;
+      } else {
+        reportWarning("Timeline template rendered empty; using fallback renderer.", {
+          hasCombat: state.hasCombat,
+          entries: state.entries?.length ?? 0,
+          collapsed: state.collapsed
+        });
+        this.root.innerHTML = fallbackTimelineHtml(state);
+      }
     } catch (error) {
       reportError("Timeline template render failed; using fallback renderer.", error);
       this.root.innerHTML = fallbackTimelineHtml(state);
