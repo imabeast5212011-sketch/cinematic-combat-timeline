@@ -1,4 +1,4 @@
-import { MODULE_TITLE } from "./constants.js";
+import { MODULE_TITLE } from "./constants.js?v=0.1.10";
 
 const TEMPLATE_CACHE = new Map();
 

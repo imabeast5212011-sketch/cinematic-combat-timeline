@@ -1,4 +1,4 @@
-import { HIDDEN_POLICIES } from "./constants.js";
+import { HIDDEN_POLICIES } from "./constants.js?v=0.1.10";
 
 export function getViewedCombat() {
   return game.combats?.viewed ?? game.combat ?? game.combats?.active ?? null;

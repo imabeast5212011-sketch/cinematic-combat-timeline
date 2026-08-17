@@ -1,12 +1,12 @@
-import { ANCHORS, MODULE_ID, SELECTOR, SETTINGS, clampNumber, localize } from "./constants.js";
-import { reportError } from "./foundry-compat.js";
+import { ANCHORS, MODULE_ID, SELECTOR, SETTINGS, clampNumber, localize } from "./constants.js?v=0.1.10";
+import { reportError } from "./foundry-compat.js?v=0.1.10";
 import {
   getViewedCombat,
   openCombatantActor,
   panToCombatantToken,
   selectCombatantToken
-} from "./combat-adapter.js";
-import { getTimelineSettings, setClientSetting } from "./settings.js";
+} from "./combat-adapter.js?v=0.1.10";
+import { getTimelineSettings, setClientSetting } from "./settings.js?v=0.1.10";
 import {
   adjustCountdown,
   deleteCountdown,
@@ -14,9 +14,9 @@ import {
   resetCountdown,
   setCountdownActive,
   setCountdownTriggered
-} from "./countdown-service.js";
-import { processCountdownProgression } from "./countdown-authority.js";
-import { buildTimelineState } from "./timeline-state.js";
+} from "./countdown-service.js?v=0.1.10";
+import { processCountdownProgression } from "./countdown-authority.js?v=0.1.10";
+import { buildTimelineState } from "./timeline-state.js?v=0.1.10";
 
 const TEMPLATE_PATH = `modules/${MODULE_ID}/templates/timeline.hbs`;
 const ANCHOR_ORDER = [
@@ -25,7 +25,7 @@ const ANCHOR_ORDER = [
   ANCHORS.MIDDLE_LEFT,
   ANCHORS.UPPER_LEFT
 ];
-const DEBUG_VERSION_LABEL = "CCT 0.1.9";
+const DEBUG_VERSION_LABEL = "CCT 0.1.10";
 
 function errorText(error, maxLength = 90) {
   const text = error?.message || error?.stack || String(error ?? "Unknown error");
@@ -562,7 +562,7 @@ export class TimelineController {
       ? getCountdowns(combat).find((entry) => entry.id === countdownId)
       : null;
     try {
-      const { CountdownConfigApplication } = await import("./countdown-config.js");
+      const { CountdownConfigApplication } = await import("./countdown-config.js?v=0.1.10");
       renderApplication(new CountdownConfigApplication({ combat, countdown }));
     } catch (error) {
       reportError("Countdown configuration could not open.", error);

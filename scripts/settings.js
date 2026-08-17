@@ -1,4 +1,4 @@
-import { ANCHORS, HIDDEN_POLICIES, MODULE_ID, SETTINGS, ZERO_BEHAVIORS } from "./constants.js";
+import { ANCHORS, HIDDEN_POLICIES, MODULE_ID, SETTINGS, ZERO_BEHAVIORS } from "./constants.js?v=0.1.10";
 
 let settingsChangeCallback = null;
 

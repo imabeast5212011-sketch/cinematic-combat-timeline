@@ -2,7 +2,7 @@
   "id": "cinematic-combat-timeline",
   "title": "Cinematic Combat Timeline",
   "description": "A compact, purely visual combat timeline for Foundry VTT v14. It mirrors the authoritative combat order and adds optional visual countdown markers without changing initiative or combat mechanics.",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "type": "module",
   "authors": [
     {
@@ -22,7 +22,7 @@
     ]
   },
   "esmodules": [
-    "scripts/main-0.1.9.js"
+    "scripts/main-0.1.10.js"
   ],
   "styles": [
     "styles/timeline.css"
@@ -37,6 +37,6 @@
   "media": [],
   "readme": "README.md",
   "url": "https://github.com/imabeast5212011-sketch/cinematic-combat-timeline",
-  "manifest": "https://raw.githubusercontent.com/imabeast5212011-sketch/cinematic-combat-timeline/main/module.json",
-  "download": "https://raw.githubusercontent.com/imabeast5212011-sketch/cinematic-combat-timeline/main/releases/cinematic-combat-timeline-0.1.9.zip"
+  "manifest": "https://github.com/imabeast5212011-sketch/cinematic-combat-timeline/raw/main/module.json",
+  "download": "https://github.com/imabeast5212011-sketch/cinematic-combat-timeline/raw/main/releases/cinematic-combat-timeline-0.1.10.zip"
 }
