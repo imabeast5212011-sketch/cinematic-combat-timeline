@@ -25,7 +25,12 @@ const ANCHOR_ORDER = [
   ANCHORS.MIDDLE_LEFT,
   ANCHORS.UPPER_LEFT
 ];
-const DEBUG_VERSION_LABEL = "CCT 0.1.7";
+const DEBUG_VERSION_LABEL = "CCT 0.1.8";
+
+function errorText(error, maxLength = 90) {
+  const text = error?.message || error?.stack || String(error ?? "Unknown error");
+  return String(text).replace(/\s+/g, " ").slice(0, maxLength);
+}
 
 function debugBadgeHtml(label = DEBUG_VERSION_LABEL) {
   return `<div
@@ -36,11 +41,13 @@ function debugBadgeHtml(label = DEBUG_VERSION_LABEL) {
     aria-label="Cinematic Combat Timeline ${escapeHtml(label)}">${escapeHtml(label)}</div>`;
 }
 
-function diagnosticPillHtml(label) {
+function diagnosticPillHtml(label, details = "") {
+  const title = details ? `${label}: ${details}` : label;
   return `<div
     class="cct-render-diagnostic"
-    style="display:grid;place-items:center;width:60px;min-height:24px;margin:0 auto;border:1px solid rgba(255,216,216,.7);border-radius:6px;background:rgba(17,17,17,.9);color:#ffd8d8;font-weight:800;font-size:10px;text-align:center;"
-    aria-hidden="true">${escapeHtml(label)}</div>`;
+    style="display:grid;place-items:center;width:96px;min-height:24px;margin:0 auto;padding:2px 4px;border:1px solid rgba(255,216,216,.7);border-radius:6px;background:rgba(17,17,17,.9);color:#ffd8d8;font-weight:800;font-size:10px;line-height:1.15;text-align:center;overflow-wrap:anywhere;"
+    title="${escapeHtml(title)}"
+    aria-hidden="true">${escapeHtml(title)}</div>`;
 }
 
 function ensureRenderShell(root, label = DEBUG_VERSION_LABEL) {
@@ -72,8 +79,72 @@ function ensureRenderShell(root, label = DEBUG_VERSION_LABEL) {
 }
 
 function setRenderSlot(root, html, label = DEBUG_VERSION_LABEL) {
-  const slot = ensureRenderShell(root, label);
-  if (slot) slot.innerHTML = html;
+  try {
+    const slot = ensureRenderShell(root, label);
+    if (slot) slot.innerHTML = html;
+  } catch (error) {
+    reportError("Render slot update failed.", error);
+    try {
+      const slot = ensureRenderShell(root, "CCT SLOT");
+      if (slot) slot.textContent = `SLOT ${errorText(error, 60)}`;
+    } catch (_fallbackError) {
+      if (root) root.textContent = `CCT SLOT ${errorText(error, 60)}`;
+    }
+  }
+}
+
+function minimalEntryHtml(entry) {
+  if (entry.isDivider) {
+    return `<li style="height:1px;width:40px;margin:2px auto;border-top:1px dashed rgba(155,216,255,.7);"></li>`;
+  }
+  const marker = entry.current ? "NOW" : (entry.isCountdown ? escapeHtml(entry.count) : "");
+  const label = entry.label || entry.initiative || "";
+  return `<li
+    class="cct-minimal-entry"
+    style="position:relative;display:grid;place-items:center;width:42px;min-height:42px;margin:2px auto;padding:0;list-style:none;"
+    ${entry.combatantId ? `data-combatant-id="${escapeHtml(entry.combatantId)}"` : ""}
+    ${entry.countdownId ? `data-countdown-id="${escapeHtml(entry.countdownId)}"` : ""}
+    role="button"
+    tabindex="0"
+    title="${escapeHtml(entry.tooltip || entry.ariaLabel || "")}">
+    <img
+      src="${escapeHtml(entry.image)}"
+      data-fallback="${escapeHtml(entry.fallbackImage)}"
+      alt=""
+      style="width:38px;height:38px;border:2px solid #d6b35a;border-radius:${entry.isCountdown ? "999px" : "6px"};object-fit:cover;background:#111;">
+    ${marker ? `<span style="position:absolute;right:-2px;bottom:-1px;min-width:16px;padding:1px 3px;border-radius:999px;background:#111;color:#ffe58f;font-size:8px;font-weight:800;text-align:center;">${escapeHtml(marker)}</span>` : ""}
+    ${label ? `<span style="margin-top:2px;max-width:62px;overflow:hidden;color:#f4f1e8;font-size:9px;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(label)}</span>` : ""}
+  </li>`;
+}
+
+function minimalTimelineHtml(state, error = null) {
+  const details = error ? errorText(error, 60) : "";
+  if (!state?.hasCombat) return diagnosticPillHtml("NO COMBAT", details);
+  const entries = Array.isArray(state.entries) ? state.entries : [];
+  if (!entries.length) return diagnosticPillHtml("NO ENTRIES", details);
+  return `<section
+    class="cct-panel cct-minimal-panel"
+    style="width:68px;padding:4px;border:1px solid rgba(214,179,90,.5);border-radius:7px;background:rgba(19,20,20,.88);box-shadow:0 3px 12px rgba(0,0,0,.35);"
+    aria-label="${escapeHtml(localize("CCT.TimelineAria"))}">
+    <div style="margin-bottom:4px;color:#f2d27a;font-size:10px;font-weight:800;text-align:center;">${escapeHtml(state.roundLabel || "CCT")}</div>
+    ${details ? `<div style="margin-bottom:4px;color:#ffb0a8;font-size:8px;line-height:1.1;text-align:center;overflow-wrap:anywhere;">${escapeHtml(details)}</div>` : ""}
+    <ol style="display:flex;flex-direction:column;gap:2px;margin:0;padding:0;">${entries.map(minimalEntryHtml).join("")}</ol>
+  </section>`;
+}
+
+function applyDefaultPlacement(root) {
+  if (!root) return;
+  root.classList.remove(...ANCHOR_ORDER.map((anchor) => `cct-anchor-${anchor}`));
+  Object.assign(root.style, {
+    position: "fixed",
+    top: "140px",
+    right: "18px",
+    bottom: "",
+    left: "",
+    transform: "",
+    zIndex: "10000",
+    display: "block"
+  });
 }
 
 function renderApplication(app) {
@@ -259,8 +330,8 @@ export class TimelineController {
       if (this.root) {
         this.root.hidden = false;
         this.root.dataset.status = "render-error";
-        setRenderSlot(this.root, diagnosticPillHtml("ERR"), "CCT ERR");
-        this.applyPlacement();
+        setRenderSlot(this.root, diagnosticPillHtml("ERR", errorText(error)), "CCT ERR");
+        applyDefaultPlacement(this.root);
       }
     } finally {
       this.rendering = false;
@@ -278,7 +349,7 @@ export class TimelineController {
     } catch (error) {
       reportError("Timeline state failed.", error);
       this.root.hidden = false;
-      setRenderSlot(this.root, diagnosticPillHtml("STATE"), "CCT ERR");
+      setRenderSlot(this.root, diagnosticPillHtml("STATE", errorText(error)), "CCT ERR");
       return;
     }
     if (!state.enabled) {
@@ -297,9 +368,28 @@ export class TimelineController {
     this.root.dataset.hasCombat = String(state.hasCombat);
     this.root.dataset.started = String(state.started);
     this.root.style.setProperty("--cct-scale", String(state.scale));
-    setRenderSlot(this.root, fallbackTimelineHtml(state));
-    this.bindDragHandle();
-    this.applyPlacement();
+    try {
+      setRenderSlot(this.root, fallbackTimelineHtml(state));
+    } catch (error) {
+      reportError("Timeline HTML render failed.", error);
+      this.root.dataset.status = "html-render-error";
+      setRenderSlot(this.root, minimalTimelineHtml(state, error), "CCT SIMPLE");
+    }
+
+    try {
+      this.bindDragHandle();
+    } catch (error) {
+      reportError("Timeline drag binding failed.", error);
+      this.root.dataset.drag = "error";
+    }
+
+    try {
+      this.applyPlacement();
+    } catch (error) {
+      reportError("Timeline placement failed.", error);
+      this.root.dataset.placement = "error";
+      applyDefaultPlacement(this.root);
+    }
   }
 
   applyPlacement() {
