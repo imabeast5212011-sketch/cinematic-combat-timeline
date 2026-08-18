@@ -3,7 +3,7 @@ import {
   MODULE_ID,
   ZERO_BEHAVIORS,
   localize
-} from "./constants.js?v=0.1.13";
+} from "./constants.js?v=0.1.14";
 import {
   getCombatTurns,
   getCurrentTurnIndex,
@@ -15,10 +15,10 @@ import {
   isAnonymousCombatant,
   isStarted,
   shouldShowCombatant
-} from "./combat-adapter.js?v=0.1.13";
-import { buildImageStyle, getActorTimelineConfig, getCombatantImageData, normalizeColor } from "./image-adapter.js?v=0.1.13";
-import { buildRoundSequence, getCountdowns, isCountdownRenderedInTimeline } from "./countdown-service.js?v=0.1.13";
-import { getTimelineSettings } from "./settings.js?v=0.1.13";
+} from "./combat-adapter.js?v=0.1.14";
+import { buildImageStyle, getActorTimelineConfig, getCombatantImageData, normalizeColor } from "./image-adapter.js?v=0.1.14";
+import { buildRoundSequence, getCountdowns, isCountdownRenderedInTimeline } from "./countdown-service.js?v=0.1.14";
+import { getTimelineSettings } from "./settings.js?v=0.1.14";
 
 function initiativeLabel(value) {
   const number = Number(value);

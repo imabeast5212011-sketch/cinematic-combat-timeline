@@ -1,5 +1,5 @@
-import { ANCHORS, MODULE_ID, SELECTOR, SETTINGS, TIE_PLACEMENTS, ZERO_BEHAVIORS, clampNumber, localize } from "./constants.js?v=0.1.13";
-import { reportError } from "./foundry-compat.js?v=0.1.13";
+import { ANCHORS, MODULE_ID, SELECTOR, SETTINGS, TIE_PLACEMENTS, ZERO_BEHAVIORS, clampNumber, localize } from "./constants.js?v=0.1.14";
+import { reportError } from "./foundry-compat.js?v=0.1.14";
 import {
   getCombatTurns,
   getCurrentTurnIndex,
@@ -7,8 +7,8 @@ import {
   openCombatantActor,
   panToCombatantToken,
   selectCombatantToken
-} from "./combat-adapter.js?v=0.1.13";
-import { getTimelineSettings, setClientSetting } from "./settings.js?v=0.1.13";
+} from "./combat-adapter.js?v=0.1.14";
+import { getTimelineSettings, setClientSetting } from "./settings.js?v=0.1.14";
 import {
   adjustCountdown,
   createCountdown,
@@ -18,9 +18,9 @@ import {
   setCountdownActive,
   setCountdownTriggered,
   updateCountdown
-} from "./countdown-service.js?v=0.1.13";
-import { processCountdownProgression } from "./countdown-authority.js?v=0.1.13";
-import { buildTimelineState } from "./timeline-state.js?v=0.1.13";
+} from "./countdown-service.js?v=0.1.14";
+import { processCountdownProgression } from "./countdown-authority.js?v=0.1.14";
+import { buildTimelineState } from "./timeline-state.js?v=0.1.14";
 
 const TEMPLATE_PATH = `modules/${MODULE_ID}/templates/timeline.hbs`;
 const ANCHOR_ORDER = [
@@ -29,20 +29,10 @@ const ANCHOR_ORDER = [
   ANCHORS.MIDDLE_LEFT,
   ANCHORS.UPPER_LEFT
 ];
-const DEBUG_VERSION_LABEL = "CCT 0.1.13";
 
 function errorText(error, maxLength = 90) {
   const text = error?.message || error?.stack || String(error ?? "Unknown error");
   return String(text).replace(/\s+/g, " ").slice(0, maxLength);
-}
-
-function debugBadgeHtml(label = DEBUG_VERSION_LABEL) {
-  return `<div
-    class="cct-debug-badge"
-    data-cct-debug-badge
-    style="display:grid;place-items:center;width:60px;min-height:24px;margin:0 auto 4px;border:2px solid #ff3b3b;border-radius:7px;background:#111;color:#ffd8d8;font-weight:800;font-size:10px;line-height:1.1;text-align:center;box-shadow:0 0 0 2px rgba(0,0,0,.55),0 0 18px rgba(255,59,59,.45);pointer-events:none;"
-    title="Cinematic Combat Timeline ${escapeHtml(label)}"
-    aria-label="Cinematic Combat Timeline ${escapeHtml(label)}">${escapeHtml(label)}</div>`;
 }
 
 function diagnosticPillHtml(label, details = "") {
@@ -54,18 +44,9 @@ function diagnosticPillHtml(label, details = "") {
     aria-hidden="true">${escapeHtml(title)}</div>`;
 }
 
-function ensureRenderShell(root, label = DEBUG_VERSION_LABEL) {
+function ensureRenderShell(root) {
   if (!root) return null;
-  let badge = root.querySelector("[data-cct-debug-badge]");
-  if (!badge) {
-    root.insertAdjacentHTML("afterbegin", debugBadgeHtml(label));
-  }
-  badge = root.querySelector("[data-cct-debug-badge]");
-  if (badge) {
-    badge.textContent = label;
-    badge.title = `Cinematic Combat Timeline ${label}`;
-    badge.setAttribute("aria-label", `Cinematic Combat Timeline ${label}`);
-  }
+  root.querySelector("[data-cct-debug-badge]")?.remove();
 
   let slot = root.querySelector("[data-cct-render-slot]");
   if (!slot) {
@@ -82,14 +63,14 @@ function ensureRenderShell(root, label = DEBUG_VERSION_LABEL) {
   return slot;
 }
 
-function setRenderSlot(root, html, label = DEBUG_VERSION_LABEL) {
+function setRenderSlot(root, html) {
   try {
-    const slot = ensureRenderShell(root, label);
+    const slot = ensureRenderShell(root);
     if (slot) slot.innerHTML = html;
   } catch (error) {
     reportError("Render slot update failed.", error);
     try {
-      const slot = ensureRenderShell(root, "CCT SLOT");
+      const slot = ensureRenderShell(root);
       if (slot) slot.textContent = `SLOT ${errorText(error, 60)}`;
     } catch (_fallbackError) {
       if (root) root.textContent = `CCT SLOT ${errorText(error, 60)}`;
@@ -156,7 +137,7 @@ function minimalEntryHtml(entry) {
 
 function minimalTimelineHtml(state, error = null) {
   const details = error ? errorText(error, 60) : "";
-  if (!state?.hasCombat) return diagnosticPillHtml("NO COMBAT", details);
+  if (!state?.hasCombat) return "";
   const entries = Array.isArray(state.entries) ? state.entries : [];
   if (!entries.length) return diagnosticPillHtml("NO ENTRIES", details);
   return `<section
@@ -231,6 +212,7 @@ function combatControlsHtml(state) {
 }
 
 function fallbackTimelineHtml(state) {
+  if (!state?.hasCombat) return "";
   if (state.collapsed) {
     return `<button type="button" class="cct-collapsed-button" data-action="toggle-collapse" title="${escapeHtml(state.controls.collapse)}" aria-label="${escapeHtml(state.currentAria)}">
       <img class="cct-collapsed-image" src="${escapeHtml(state.currentImage)}" data-fallback="${escapeHtml(state.currentFallbackImage)}" alt="">
@@ -295,9 +277,10 @@ export class TimelineController {
       top: "140px",
       right: "18px",
       zIndex: "10000",
-      display: "block",
+      display: "none",
       pointerEvents: "auto"
     });
+    this.root.hidden = true;
     this.root.innerHTML = "";
     ensureRenderShell(this.root);
     this.root.addEventListener("click", (event) => this.onClick(event));
@@ -382,6 +365,7 @@ export class TimelineController {
       reportError("Timeline render failed.", error);
       if (this.root) {
         this.root.hidden = false;
+        this.root.style.display = "block";
         this.root.dataset.status = "render-error";
         setRenderSlot(this.root, diagnosticPillHtml("ERR", errorText(error)), "CCT ERR");
         applyDefaultPlacement(this.root);
@@ -402,17 +386,29 @@ export class TimelineController {
     } catch (error) {
       reportError("Timeline state failed.", error);
       this.root.hidden = false;
+      this.root.style.display = "block";
       setRenderSlot(this.root, diagnosticPillHtml("STATE", errorText(error)), "CCT ERR");
       return;
     }
     if (!state.enabled) {
-      this.root.hidden = false;
+      this.root.hidden = true;
+      this.root.style.display = "none";
       this.root.dataset.status = "disabled-setting";
-      setRenderSlot(this.root, diagnosticPillHtml("OFF"), "CCT OFF");
-      this.applyPlacement();
+      setRenderSlot(this.root, "");
+      this.closeCountdownEditor();
+      return;
+    }
+    if (!state.hasCombat) {
+      this.root.hidden = true;
+      this.root.style.display = "none";
+      this.root.dataset.status = "no-combat";
+      this.root.dataset.hasCombat = "false";
+      setRenderSlot(this.root, "");
+      this.closeCountdownEditor();
       return;
     }
     this.root.hidden = false;
+    this.root.style.display = "block";
     this.root.dataset.collapsed = String(state.collapsed);
     this.root.dataset.expanded = String(state.expandedLabels);
     this.root.dataset.reduceAnimation = String(state.reduceAnimation);
